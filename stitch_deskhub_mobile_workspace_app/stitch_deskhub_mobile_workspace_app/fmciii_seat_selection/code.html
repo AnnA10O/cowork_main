@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "surface": "#051424",
+                        "surface-container-highest": "#273647",
+                        "on-surface": "#d4e4fa",
+                        "on-surface-variant": "#c3c6d7",
+                        "primary": "#b4c5ff",
+                        "on-tertiary-container": "#ffede6",
+                        "on-secondary-fixed-variant": "#454747",
+                        "on-primary-fixed": "#00174b",
+                        "error": "#ffb4ab",
+                        "on-primary-fixed-variant": "#003ea8",
+                        "on-background": "#d4e4fa",
+                        "secondary-fixed": "#e2e2e2",
+                        "primary-fixed-dim": "#b4c5ff",
+                        "on-tertiary-fixed-variant": "#7d2d00",
+                        "on-tertiary-fixed": "#360f00",
+                        "on-secondary": "#2f3131",
+                        "error-container": "#93000a",
+                        "inverse-on-surface": "#233143",
+                        "outline-variant": "#434655",
+                        "inverse-surface": "#d4e4fa",
+                        "primary-container": "#2563eb",
+                        "inverse-primary": "#0053db",
+                        "on-error": "#690005",
+                        "tertiary-container": "#bc4800",
+                        "on-primary-container": "#eeefff",
+                        "surface-container": "#122131",
+                        "background": "#051424",
+                        "surface-container-low": "#0d1c2d",
+                        "outline": "#8d90a0",
+                        "on-primary": "#002a78",
+                        "surface-tint": "#b4c5ff",
+                        "tertiary-fixed-dim": "#ffb596",
+                        "secondary-container": "#454747",
+                        "on-error-container": "#ffdad6",
+                        "surface-bright": "#2c3a4c",
+                        "on-secondary-fixed": "#1a1c1c",
+                        "primary-fixed": "#dbe1ff",
+                        "surface-container-high": "#1c2b3c",
+                        "on-secondary-container": "#b4b5b5",
+                        "tertiary": "#ffb596",
+                        "secondary-fixed-dim": "#c6c6c7",
+                        "surface-container-lowest": "#010f1f",
+                        "secondary": "#c6c6c7",
+                        "surface-dim": "#051424",
+                        "on-tertiary": "#581e00",
+                        "tertiary-fixed": "#ffdbcd",
+                        "surface-variant": "#273647"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "md": "16px",
+                        "lg": "24px",
+                        "base": "4px",
+                        "xl": "32px",
+                        "margin": "20px",
+                        "sm": "8px",
+                        "xs": "4px",
+                        "gutter": "16px"
+                    },
+                    "fontFamily": {
+                        "label-caps": ["Inter"],
+                        "h3": ["Inter"],
+                        "body-md": ["Inter"],
+                        "h2": ["Inter"],
+                        "h1": ["Inter"],
+                        "body-lg": ["Inter"]
+                    },
+                    "fontSize": {
+                        "label-caps": ["12px", {"lineHeight": "1", "letterSpacing": "0.05em", "fontWeight": "600"}],
+                        "h3": ["20px", {"lineHeight": "1.4", "fontWeight": "600"}],
+                        "body-md": ["14px", {"lineHeight": "1.5", "fontWeight": "400"}],
+                        "h2": ["24px", {"lineHeight": "1.3", "letterSpacing": "-0.01em", "fontWeight": "700"}],
+                        "h1": ["32px", {"lineHeight": "1.2", "letterSpacing": "-0.02em", "fontWeight": "700"}],
+                        "body-lg": ["16px", {"lineHeight": "1.6", "fontWeight": "400"}]
+                    }
+                },
+            },
+        }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .glass-card {
+            background: rgba(255, 255, 255, 0.03);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+        }
+    </style>
+</head>
+<body class="bg-background text-on-surface min-h-screen flex flex-col font-body-md">
+<!-- TopAppBar -->
+<header class="sticky top-0 w-full z-50 bg-background flex justify-between items-center px-margin h-16">
+<div class="flex items-center gap-sm">
+<span class="material-symbols-outlined text-primary" data-icon="location_on">location_on</span>
+<h2 class="font-h2 text-h2 text-on-surface">London</h2>
+</div>
+<div class="flex items-center gap-md">
+<span class="material-symbols-outlined text-on-surface-variant hover:opacity-80 transition-opacity active:opacity-70 cursor-pointer" data-icon="notifications">notifications</span>
+</div>
+</header>
+<main class="flex-grow px-margin pt-sm pb-xl">
+<!-- Brand Identity Section -->
+<section class="mb-lg">
+<h1 class="font-h1 text-h1 text-primary mb-xs">FMCIII</h1>
+<p class="font-body-md text-on-surface-variant">Select your preferred seating for the upcoming journey.</p>
+</section>
+<!-- Seat Selection Grid (Asymmetric Bento Style) -->
+<div class="grid grid-cols-1 md:grid-cols-2 gap-gutter">
+<!-- Window Seat Option -->
+<div class="glass-card rounded-xl p-md flex flex-col gap-md relative overflow-hidden group cursor-pointer border-2 border-transparent hover:border-primary transition-all">
+<div class="relative h-48 w-full rounded-lg overflow-hidden">
+<img class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" data-alt="A luxurious high-altitude view through a modern aircraft window. The scene captures soft morning light spilling across the sleek interior textures and the curved pane. Outside, a sea of crystalline clouds stretches toward a deep azure horizon, reflecting a sophisticated and serene travel aesthetic with cool blue and crisp white tones." src="https://lh3.googleusercontent.com/aida/ADBb0ugtmTM4gUCAilVWcBfJwAYNx7s0EVwnAETeiipm1rridcm0SWe5WBPXkVMdTHFu-1DtFmfT0VkMr5i5RR64UZ9HXaAKaEGfwMMa_SBriKobZfDP4gMmGwQ53CqTMVC7RvRS0a0GIg5jdLdDkugG0M8lqPWXD9NkeiZ7RXnHwTrIjgSfZgENNUdG1eiyL_dCKKUCwgcNdDt8Fiu270ykZgitL2Ov3A7OB2Yt3KwGOyHJmtu1GN9CkK-RIrNHuV1FDRKi2nGrFiO40Ws"/>
+<div class="absolute top-sm right-sm flex items-center gap-xs bg-surface/80 backdrop-blur-md px-sm py-xs rounded-full">
+<div class="w-2 h-2 rounded-full bg-[#10B981]"></div>
+<span class="font-label-caps text-label-caps text-on-surface">Available</span>
+</div>
+</div>
+<div class="flex flex-col gap-xs">
+<div class="flex justify-between items-start">
+<h3 class="font-h3 text-h3">Window Seat</h3>
+<span class="font-h3 text-h3 text-primary">£45.00</span>
+</div>
+<div class="flex flex-wrap gap-xs mt-xs">
+<span class="bg-white/10 px-xs py-1 rounded-full font-label-caps text-[10px] text-on-surface uppercase">Panoramic View</span>
+<span class="bg-white/10 px-xs py-1 rounded-full font-label-caps text-[10px] text-on-surface uppercase">Extra Privacy</span>
+</div>
+</div>
+</div>
+<!-- Normal Seat Option -->
+<div class="glass-card rounded-xl p-md flex flex-col gap-md relative overflow-hidden group cursor-pointer border-2 border-transparent hover:border-primary transition-all">
+<div class="relative h-48 w-full rounded-lg overflow-hidden">
+<img class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" data-alt="An interior view of a premium executive lounge seat featuring rich charcoal fabrics and brushed metal accents. The lighting is focused and warm, highlighting the ergonomic curves and high-end finish of the furniture. The atmosphere is quiet and professional, utilizing a dark mode color palette of deep grays and subtle metallic highlights to convey luxury and focus." src="https://lh3.googleusercontent.com/aida/ADBb0uiZHyWxUo1siuBkSpLRXvpynBKmpNP89FUW_HqUFYVnJ4TvppQCmRc915PoUpn1TCv5U3qCDVirAhKsvjL2tBzyJUeGN2ZpPBtfsSEhRWlok52VW5o0ptUWLXMEpE32AFLUSEsPQaM9Bjj7sPEOQVMUnlfi3SJ_jgI2DjFpCqurjiqXeL_xWSEx2UQpm7lE7Z_5QwaLYvtlFbUqfYP1WkM8T9XikImqE28BSFT2v1LG6z791Cm_GuDe_47bOkJxfLeQVTw9zndAr40"/>
+<div class="absolute top-sm right-sm flex items-center gap-xs bg-surface/80 backdrop-blur-md px-sm py-xs rounded-full">
+<div class="w-2 h-2 rounded-full bg-[#F59E0B]"></div>
+<span class="font-label-caps text-label-caps text-on-surface">Filling Fast</span>
+</div>
+</div>
+<div class="flex flex-col gap-xs">
+<div class="flex justify-between items-start">
+<h3 class="font-h3 text-h3">Normal Seat</h3>
+<span class="font-h3 text-h3 text-primary">£20.00</span>
+</div>
+<div class="flex flex-wrap gap-xs mt-xs">
+<span class="bg-white/10 px-xs py-1 rounded-full font-label-caps text-[10px] text-on-surface uppercase">Aisle Access</span>
+<span class="bg-white/10 px-xs py-1 rounded-full font-label-caps text-[10px] text-on-surface uppercase">Standard Legroom</span>
+</div>
+</div>
+</div>
+<!-- Visual Context Card (Asymmetric Element) -->
+<div class="md:col-span-2 glass-card rounded-xl p-lg flex flex-col md:flex-row items-center gap-lg">
+<div class="w-full md:w-1/3 h-40 rounded-lg overflow-hidden shrink-0">
+<img class="w-full h-full object-cover" data-alt="A detailed blueprint of a modern corporate seating layout shown on a digital interface. The visualization uses thin luminous lines and geometric patterns against a dark surface background. The style is technical yet elegant, with soft blue glows and precise typography that emphasizes high-performance design and spatial efficiency in a futuristic office or transport environment." src="https://lh3.googleusercontent.com/aida/ADBb0ugkYHT9Qg_jSjZ6U9A4XI9gId61lkhEVP1y07y64W1ifI0fbMtA3mov7R8_381cvDH_BMAl7JK1A9x9Oe7OAMh8faH4gAubwUCaV4WgMyNhWvgXntTI6ZwPdK75Z7zhAvR9AwWlsUO2-Iw9wxXff0lCka8poclkfCr3fvMeo7QrF4aKC_3ZErGNvzkoAtDFfLm3O4Ge-GUuQX9YudztGiZPpp-vAr4aJL-3-hRT2b0-flBKkAumXk_JN1-Tsbilsrvgio5y-IxETy0"/>
+</div>
+<div class="flex-grow">
+<h3 class="font-h3 text-h3 mb-xs text-primary">Premium Configuration</h3>
+<p class="font-body-md text-on-surface-variant">All seats in the FMCIII category feature high-speed WiFi, dedicated power outlets, and ergonomic support designed for digital nomads and executive teams.</p>
+</div>
+</div>
+</div>
+</main>
+<!-- Bottom Action Section -->
+<div class="sticky bottom-0 w-full bg-surface-container border-t border-outline-variant/10 px-margin py-md z-50">
+<div class="max-w-4xl mx-auto flex items-center justify-between gap-md">
+<div class="hidden md:block">
+<p class="font-label-caps text-label-caps text-on-surface-variant">Estimated Total</p>
+<p class="font-h3 text-h3">Select a seat</p>
+</div>
+<button class="w-full md:w-auto px-xl py-md bg-primary-container text-on-primary-container rounded-lg font-h3 transition-transform active:scale-95 flex items-center justify-center gap-sm">
+                Proceed
+                <span class="material-symbols-outlined" data-icon="chevron_right">chevron_right</span>
+</button>
+</div>
+</div>
+<!-- BottomNavBar (Hidden on desktop, shown on mobile) -->
+<nav class="md:hidden fixed bottom-0 w-full z-50 bg-surface-container flex justify-around items-center h-20 px-4 shadow-lg border-t border-outline-variant/10">
+<div class="flex flex-col items-center justify-center text-on-surface-variant hover:bg-surface-container-highest transition-colors active:scale-95 duration-150">
+<span class="material-symbols-outlined" data-icon="home">home</span>
+<span class="font-body-md text-body-md">Home</span>
+</div>
+<div class="flex flex-col items-center justify-center text-on-surface-variant hover:bg-surface-container-highest transition-colors active:scale-95 duration-150">
+<span class="material-symbols-outlined" data-icon="workspaces">workspaces</span>
+<span class="font-body-md text-body-md">Spaces</span>
+</div>
+<div class="flex flex-col items-center justify-center bg-primary-container text-on-primary-container rounded-full px-4 py-1 active:scale-95 duration-150">
+<span class="material-symbols-outlined" data-icon="event_available">event_available</span>
+<span class="font-body-md text-body-md">Bookings</span>
+</div>
+<div class="flex flex-col items-center justify-center text-on-surface-variant hover:bg-surface-container-highest transition-colors active:scale-95 duration-150">
+<span class="material-symbols-outlined" data-icon="person">person</span>
+<span class="font-body-md text-body-md">Profile</span>
+</div>
+</nav>
+<!-- Spacer for Bottom Nav on mobile -->
+<div class="h-20 md:hidden"></div>
+</body></html>

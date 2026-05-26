@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .glass-card {
+            background: rgba(38, 38, 38, 0.7);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+        }
+    </style>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "surface": "#051424",
+                        "surface-container-highest": "#273647",
+                        "on-surface": "#d4e4fa",
+                        "on-surface-variant": "#c3c6d7",
+                        "primary": "#b4c5ff",
+                        "on-tertiary-container": "#ffede6",
+                        "on-secondary-fixed-variant": "#454747",
+                        "on-primary-fixed": "#00174b",
+                        "error": "#ffb4ab",
+                        "on-primary-fixed-variant": "#003ea8",
+                        "on-background": "#d4e4fa",
+                        "secondary-fixed": "#e2e2e2",
+                        "primary-fixed-dim": "#b4c5ff",
+                        "on-tertiary-fixed-variant": "#7d2d00",
+                        "on-tertiary-fixed": "#360f00",
+                        "on-secondary": "#2f3131",
+                        "error-container": "#93000a",
+                        "inverse-on-surface": "#233143",
+                        "outline-variant": "#434655",
+                        "inverse-surface": "#d4e4fa",
+                        "primary-container": "#2563eb",
+                        "inverse-primary": "#0053db",
+                        "on-error": "#690005",
+                        "tertiary-container": "#bc4800",
+                        "on-primary-container": "#eeefff",
+                        "surface-container": "#122131",
+                        "background": "#051424",
+                        "surface-container-low": "#0d1c2d",
+                        "outline": "#8d90a0",
+                        "on-primary": "#002a78",
+                        "surface-tint": "#b4c5ff",
+                        "tertiary-fixed-dim": "#ffb596",
+                        "secondary-container": "#454747",
+                        "on-error-container": "#ffdad6",
+                        "surface-bright": "#2c3a4c",
+                        "on-secondary-fixed": "#1a1c1c",
+                        "primary-fixed": "#dbe1ff",
+                        "surface-container-high": "#1c2b3c",
+                        "on-secondary-container": "#b4b5b5",
+                        "tertiary": "#ffb596",
+                        "secondary-fixed-dim": "#c6c6c7",
+                        "surface-container-lowest": "#010f1f",
+                        "secondary": "#c6c6c7",
+                        "surface-dim": "#051424",
+                        "on-tertiary": "#581e00",
+                        "tertiary-fixed": "#ffdbcd",
+                        "surface-variant": "#273647"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "md": "16px",
+                        "lg": "24px",
+                        "base": "4px",
+                        "xl": "32px",
+                        "margin": "20px",
+                        "sm": "8px",
+                        "xs": "4px",
+                        "gutter": "16px"
+                    },
+                    "fontFamily": {
+                        "label-caps": ["Inter"],
+                        "h3": ["Inter"],
+                        "body-md": ["Inter"],
+                        "h2": ["Inter"],
+                        "h1": ["Inter"],
+                        "body-lg": ["Inter"]
+                    },
+                    "fontSize": {
+                        "label-caps": ["12px", {"lineHeight": "1", "letterSpacing": "0.05em", "fontWeight": "600"}],
+                        "h3": ["20px", {"lineHeight": "1.4", "fontWeight": "600"}],
+                        "body-md": ["14px", {"lineHeight": "1.5", "fontWeight": "400"}],
+                        "h2": ["24px", {"lineHeight": "1.3", "letterSpacing": "-0.01em", "fontWeight": "700"}],
+                        "h1": ["32px", {"lineHeight": "1.2", "letterSpacing": "-0.02em", "fontWeight": "700"}],
+                        "body-lg": ["16px", {"lineHeight": "1.6", "fontWeight": "400"}]
+                    }
+                },
+            },
+        }
+    </script>
+</head>
+<body class="bg-background text-on-surface font-body-md min-h-screen pb-24">
+<!-- TopAppBar -->
+<header class="sticky top-0 w-full z-50 bg-background flex justify-between items-center px-margin h-16">
+<div class="flex items-center gap-sm">
+<span class="material-symbols-outlined text-primary" data-icon="location_on">location_on</span>
+<h1 class="font-h2 text-h2 text-on-surface">London</h1>
+</div>
+<div class="flex items-center gap-md">
+<button class="hover:opacity-80 transition-opacity active:opacity-70">
+<span class="material-symbols-outlined text-on-surface" data-icon="notifications">notifications</span>
+</button>
+</div>
+</header>
+<main class="relative">
+<!-- Hero Section -->
+<section class="relative w-full h-[400px] overflow-hidden">
+<img alt="FMCIII Executive Lounge" class="w-full h-full object-cover" src="https://lh3.googleusercontent.com/aida/ADBb0ujbQhpAhtFslyCAU6D6J1nook_TBsqH3JWWvOCtBMcsqy9zOuThgtd31YCxjrk6EKXrXZ7OfCzDEGxAxddDjBt3sd4kFrf77hPm95O-w6BGLiX-7zuWIHe6Prk3hfKUSEeQNNKF1baVaNAucBZVPIt0WiCdHI-l5OG1RCLFXD6sQKKq-GpKN972AP4hGGZxyrwdnn4myrmEyCV2S3wX_Q7Mfc1c4gv5cCKM2OqF8Ub_UKS9FWhyZTCk5qdLi7sy4LA39pmN4P7S5n0"/>
+<div class="absolute inset-0 bg-gradient-to-t from-background via-transparent to-transparent"></div>
+<div class="absolute bottom-margin left-margin right-margin">
+<div class="flex justify-between items-end">
+<div>
+<span class="bg-primary/20 text-primary px-sm py-xs rounded-lg font-label-caps text-label-caps mb-sm inline-block">PREMIUM PARTNER</span>
+<h2 class="font-h1 text-h1 text-white mb-xs">FMCIII</h2>
+<div class="flex items-center gap-xs text-on-surface-variant">
+<span class="material-symbols-outlined text-[16px]" data-icon="star" style="font-variation-settings: 'FILL' 1;">star</span>
+<span class="font-label-caps text-label-caps">4.9 (128 Reviews)</span>
+</div>
+</div>
+</div>
+</div>
+</section>
+<!-- Content Section -->
+<div class="px-margin -mt-sm relative z-10 space-y-lg">
+<!-- Quick Actions & Price Card -->
+<div class="glass-card rounded-xl p-md flex justify-between items-center shadow-lg">
+<div class="space-y-xs">
+<p class="text-on-surface-variant font-label-caps text-label-caps">STARTING AT</p>
+<div class="flex items-baseline gap-xs">
+<span class="font-h2 text-h2 text-primary">£45</span>
+<span class="text-on-surface-variant font-body-md text-body-md">/ day</span>
+</div>
+</div>
+<div class="flex gap-sm">
+<div class="flex items-center gap-xs">
+<div class="w-2 h-2 rounded-full bg-[#10B981]"></div>
+<span class="font-label-caps text-label-caps text-on-surface-variant">Available</span>
+</div>
+</div>
+</div>
+<!-- Description -->
+<section class="space-y-md">
+<h3 class="font-h3 text-h3 text-on-surface">The Experience</h3>
+<p class="text-on-surface-variant font-body-lg text-body-lg leading-relaxed">
+                    FMCIII is a meticulously engineered workspace designed for the high-performing professional. Blending modern corporate reliability with an atmosphere of quiet luxury, this environment features sound-dampened meeting pods, ergonomic workstations, and panoramic views of the London skyline. Every detail is curated to foster deep work and professional networking.
+                </p>
+</section>
+<!-- Amenities Bento Grid -->
+<section class="space-y-md">
+<h3 class="font-h3 text-h3 text-on-surface">Premium Amenities</h3>
+<div class="grid grid-cols-2 gap-gutter">
+<div class="glass-card rounded-xl p-md flex flex-col gap-sm">
+<span class="material-symbols-outlined text-primary" data-icon="wifi">wifi</span>
+<p class="font-label-caps text-label-caps">Gigabit Fiber</p>
+</div>
+<div class="glass-card rounded-xl p-md flex flex-col gap-sm">
+<span class="material-symbols-outlined text-primary" data-icon="coffee">coffee</span>
+<p class="font-label-caps text-label-caps">Artisan Café</p>
+</div>
+<div class="glass-card rounded-xl p-md flex flex-col gap-sm">
+<span class="material-symbols-outlined text-primary" data-icon="print">print</span>
+<p class="font-label-caps text-label-caps">Secure Print</p>
+</div>
+<div class="glass-card rounded-xl p-md flex flex-col gap-sm">
+<span class="material-symbols-outlined text-primary" data-icon="videocam">videocam</span>
+<p class="font-label-caps text-label-caps">4K VC Pods</p>
+</div>
+</div>
+</section>
+<!-- Location Preview -->
+<section class="space-y-md">
+<div class="flex justify-between items-center">
+<h3 class="font-h3 text-h3 text-on-surface">Location</h3>
+<button class="text-primary font-label-caps text-label-caps">VIEW MAP</button>
+</div>
+<div class="relative w-full h-48 rounded-xl overflow-hidden border border-outline-variant/20">
+<img alt="Location Map of FMCIII" class="w-full h-full object-cover" data-location="London" src="https://lh3.googleusercontent.com/aida/ADBb0ujz9OUx9PeLfdkD8VX2tpHxkrRoTYT3AYFc5jC2-YkiPx7XF9Fiv9bLKacmZXdEKQRFV1b6YX2BA0nqnZgKGpaCspXy-JrIGaZWmTR84_bDwM9RUc_oZlMSPwjtd9VGBr72QPaVCXOaF9Kw6bAwo9se316MUQ2uwBC68CVWMlhnLgdW0L3fqWqtj6ZNICLiwU6Z4tovJwX7NAQH19Id98Eyxz4xjJs33gplusYHBzkWVER28cHkfsOFCA2f"/>
+<div class="absolute inset-0 flex items-center justify-center">
+<div class="bg-primary p-xs rounded-full shadow-xl">
+<span class="material-symbols-outlined text-surface" data-icon="location_on" style="font-variation-settings: 'FILL' 1;">location_on</span>
+</div>
+</div>
+</div>
+</section>
+<!-- Gallery -->
+<section class="space-y-md pb-xl">
+<h3 class="font-h3 text-h3 text-on-surface">Workspace Gallery</h3>
+<div class="flex gap-md overflow-x-auto no-scrollbar snap-x">
+<div class="flex-shrink-0 w-64 h-80 rounded-xl overflow-hidden snap-start">
+<img alt="Executive Meeting Room Interior" class="w-full h-full object-cover" src="https://lh3.googleusercontent.com/aida/ADBb0uiZHyWxUo1siuBkSpLRXvpynBKmpNP89FUW_HqUFYVnJ4TvppQCmRc915PoUpn1TCv5U3qCDVirAhKsvjL2tBzyJUeGN2ZpPBtfsSEhRWlok52VW5o0ptUWLXMEpE32AFLUSEsPQaM9Bjj7sPEOQVMUnlfi3SJ_jgI2DjFpCqurjiqXeL_xWSEx2UQpm7lE7Z_5QwaLYvtlFbUqfYP1WkM8T9XikImqE28BSFT2v1LG6z791Cm_GuDe_47bOkJxfLeQVTw9zndAr40"/>
+</div>
+<div class="flex-shrink-0 w-64 h-80 rounded-xl overflow-hidden snap-start">
+<img alt="Collaborative Lounge Area" class="w-full h-full object-cover" src="https://lh3.googleusercontent.com/aida/ADBb0ugtmTM4gUCAilVWcBfJwAYNx7s0EVwnAETeiipm1rridcm0SWe5WBPXkVMdTHFu-1DtFmfT0VkMr5i5RR64UZ9HXaAKaEGfwMMa_SBriKobZfDP4gMmGwQ53CqTMVC7RvRS0a0GIg5jdLdDkugG0M8lqPWXD9NkeiZ7RXnHwTrIjgSfZgENNUdG1eiyL_dCKKUCwgcNdDt8Fiu270ykZgitL2Ov3A7OB2Yt3KwGOyHJmtu1GN9CkK-RIrNHuV1FDRKi2nGrFiO40Ws"/>
+</div>
+<div class="flex-shrink-0 w-64 h-80 rounded-xl overflow-hidden snap-start">
+<img alt="Private Focus Cabinets" class="w-full h-full object-cover" src="https://lh3.googleusercontent.com/aida/ADBb0ugkYHT9Qg_jSjZ6U9A4XI9gId61lkhEVP1y07y64W1ifI0fbMtA3mov7R8_381cvDH_BMAl7JK1A9x9Oe7OAMh8faH4gAubwUCaV4WgMyNhWvgXntTI6ZwPdK75Z7zhAvR9AwWlsUO2-Iw9wxXff0lCka8poclkfCr3fvMeo7QrF4aKC_3ZErGNvzkoAtDFfLm3O4Ge-GUuQX9YudztGiZPpp-vAr4aJL-3-hRT2b0-flBKkAumXk_JN1-Tsbilsrvgio5y-IxETy0"/>
+</div>
+</div>
+</section>
+</div>
+</main>
+<!-- Bottom Action Bar (Contextual FAB Suppression) -->
+<div class="fixed bottom-0 left-0 right-0 p-margin bg-surface-container/80 backdrop-blur-md z-50 flex items-center gap-md">
+<button class="flex-1 bg-primary-container text-on-primary-container h-12 rounded-lg font-h3 text-h3 flex items-center justify-center hover:opacity-90 active:scale-95 transition-all">
+            Book Now
+        </button>
+<button class="w-12 h-12 flex items-center justify-center rounded-lg border border-outline text-on-surface-variant hover:bg-surface-container-highest transition-colors">
+<span class="material-symbols-outlined" data-icon="favorite">favorite</span>
+</button>
+</div>
+<!-- BottomNavBar (Hidden for Focused Journey - Rule Followed) -->
+<!-- As this is a Details/Task-Focused page, the BottomNavBar is suppressed per instructions -->
+</body></html>

@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Checkout - FMCIII</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .glass-card {
+            background: rgba(39, 54, 71, 0.4);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+        }
+    </style>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "surface": "#051424",
+                        "surface-container-highest": "#273647",
+                        "on-surface": "#d4e4fa",
+                        "on-surface-variant": "#c3c6d7",
+                        "primary": "#b4c5ff",
+                        "on-tertiary-container": "#ffede6",
+                        "on-secondary-fixed-variant": "#454747",
+                        "on-primary-fixed": "#00174b",
+                        "error": "#ffb4ab",
+                        "on-primary-fixed-variant": "#003ea8",
+                        "on-background": "#d4e4fa",
+                        "secondary-fixed": "#e2e2e2",
+                        "primary-fixed-dim": "#b4c5ff",
+                        "on-tertiary-fixed-variant": "#7d2d00",
+                        "on-tertiary-fixed": "#360f00",
+                        "on-secondary": "#2f3131",
+                        "error-container": "#93000a",
+                        "inverse-on-surface": "#233143",
+                        "outline-variant": "#434655",
+                        "inverse-surface": "#d4e4fa",
+                        "primary-container": "#2563eb",
+                        "inverse-primary": "#0053db",
+                        "on-error": "#690005",
+                        "tertiary-container": "#bc4800",
+                        "on-primary-container": "#eeefff",
+                        "surface-container": "#122131",
+                        "background": "#051424",
+                        "surface-container-low": "#0d1c2d",
+                        "outline": "#8d90a0",
+                        "on-primary": "#002a78",
+                        "surface-tint": "#b4c5ff",
+                        "tertiary-fixed-dim": "#ffb596",
+                        "secondary-container": "#454747",
+                        "on-error-container": "#ffdad6",
+                        "surface-bright": "#2c3a4c",
+                        "on-secondary-fixed": "#1a1c1c",
+                        "primary-fixed": "#dbe1ff",
+                        "surface-container-high": "#1c2b3c",
+                        "on-secondary-container": "#b4b5b5",
+                        "tertiary": "#ffb596",
+                        "secondary-fixed-dim": "#c6c6c7",
+                        "surface-container-lowest": "#010f1f",
+                        "secondary": "#c6c6c7",
+                        "surface-dim": "#051424",
+                        "on-tertiary": "#581e00",
+                        "tertiary-fixed": "#ffdbcd",
+                        "surface-variant": "#273647"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "md": "16px",
+                        "lg": "24px",
+                        "base": "4px",
+                        "xl": "32px",
+                        "margin": "20px",
+                        "sm": "8px",
+                        "xs": "4px",
+                        "gutter": "16px"
+                    },
+                    "fontFamily": {
+                        "label-caps": ["Inter"],
+                        "h3": ["Inter"],
+                        "body-md": ["Inter"],
+                        "h2": ["Inter"],
+                        "h1": ["Inter"],
+                        "body-lg": ["Inter"]
+                    },
+                    "fontSize": {
+                        "label-caps": ["12px", {"lineHeight": "1", "letterSpacing": "0.05em", "fontWeight": "600"}],
+                        "h3": ["20px", {"lineHeight": "1.4", "fontWeight": "600"}],
+                        "body-md": ["14px", {"lineHeight": "1.5", "fontWeight": "400"}],
+                        "h2": ["24px", {"lineHeight": "1.3", "letterSpacing": "-0.01em", "fontWeight": "700"}],
+                        "h1": ["32px", {"lineHeight": "1.2", "letterSpacing": "-0.02em", "fontWeight": "700"}],
+                        "body-lg": ["16px", {"lineHeight": "1.6", "fontWeight": "400"}]
+                    }
+                },
+            },
+        }
+    </script>
+</head>
+<body class="bg-background text-on-surface min-h-screen flex flex-col font-body-md">
+<!-- TopAppBar - Suppressed Shell logic: Back Button implies sub-page journey -->
+<header class="sticky top-0 w-full z-50 bg-background flex justify-between items-center px-margin h-16">
+<div class="flex items-center gap-sm">
+<button class="w-10 h-10 flex items-center justify-center rounded-full active:opacity-70 transition-opacity">
+<span class="material-symbols-outlined text-primary">arrow_back</span>
+</button>
+<h1 class="font-h2 text-h2 text-on-surface">Checkout</h1>
+</div>
+<div class="font-h3 text-h3 text-primary">FMCIII</div>
+</header>
+<main class="flex-1 px-margin pb-32">
+<!-- Booking Summary Hero Card -->
+<div class="mt-md relative h-48 rounded-xl overflow-hidden shadow-lg group">
+<img alt="" class="w-full h-full object-cover opacity-60" src="https://lh3.googleusercontent.com/aida/ADBb0ujz9OUx9PeLfdkD8VX2tpHxkrRoTYT3AYFc5jC2-YkiPx7XF9Fiv9bLKacmZXdEKQRFV1b6YX2BA0nqnZgKGpaCspXy-JrIGaZWmTR84_bDwM9RUc_oZlMSPwjtd9VGBr72QPaVCXOaF9Kw6bAwo9se316MUQ2uwBC68CVWMlhnLgdW0L3fqWqtj6ZNICLiwU6Z4tovJwX7NAQH19Id98Eyxz4xjJs33gplusYHBzkWVER28cHkfsOFCA2f"/>
+<div class="absolute inset-0 bg-gradient-to-t from-background via-transparent to-transparent"></div>
+<div class="absolute bottom-md left-md">
+<div class="flex items-center gap-xs mb-xs">
+<span class="material-symbols-outlined text-primary text-body-md">location_on</span>
+<span class="font-label-caps text-label-caps text-on-surface-variant">LONDON DISTRICT</span>
+</div>
+<h2 class="font-h2 text-h2 text-on-surface">Executive Lounge FMCIII</h2>
+</div>
+</div>
+<section class="mt-lg space-y-md">
+<!-- Reservation Details -->
+<div class="glass-card rounded-xl p-md">
+<h3 class="font-label-caps text-label-caps text-outline uppercase mb-md">Reservation Details</h3>
+<div class="grid grid-cols-2 gap-md">
+<div class="flex flex-col">
+<span class="text-on-surface-variant font-body-md">Seat Type</span>
+<div class="flex items-center gap-xs mt-xs">
+<span class="material-symbols-outlined text-primary" style="font-variation-settings: 'FILL' 1;">window</span>
+<span class="font-h3 text-h3">Window Seat</span>
+</div>
+</div>
+<div class="flex flex-col">
+<span class="text-on-surface-variant font-body-md">Date</span>
+<div class="flex items-center gap-xs mt-xs">
+<span class="material-symbols-outlined text-primary">calendar_today</span>
+<span class="font-h3 text-h3">Oct 24, 2023</span>
+</div>
+</div>
+</div>
+</div>
+<!-- Price Breakdown -->
+<div class="glass-card rounded-xl p-md">
+<h3 class="font-label-caps text-label-caps text-outline uppercase mb-md">Price Breakdown</h3>
+<div class="space-y-sm">
+<div class="flex justify-between">
+<span class="text-on-surface-variant">Full Day Pass</span>
+<span class="font-body-lg text-on-surface">$85.00</span>
+</div>
+<div class="flex justify-between">
+<span class="text-on-surface-variant">Premium Window Surcharge</span>
+<span class="font-body-lg text-on-surface">$15.00</span>
+</div>
+<div class="flex justify-between">
+<span class="text-on-surface-variant">Service Fee</span>
+<span class="font-body-lg text-on-surface">$5.50</span>
+</div>
+<div class="border-t border-outline-variant/30 my-sm pt-sm flex justify-between">
+<span class="font-h3 text-h3 text-on-surface">Total Amount</span>
+<span class="font-h2 text-h2 text-primary">$105.50</span>
+</div>
+</div>
+</div>
+<!-- Payment Methods -->
+<div class="space-y-md">
+<h3 class="font-label-caps text-label-caps text-outline uppercase px-xs">Payment Method</h3>
+<!-- Card Option -->
+<div class="flex items-center justify-between p-md rounded-xl bg-surface-container border border-primary/40 ring-1 ring-primary/40">
+<div class="flex items-center gap-md">
+<div class="w-12 h-8 rounded-lg bg-[#1A1C1C] flex items-center justify-center border border-outline-variant/20">
+<span class="material-symbols-outlined text-on-surface">credit_card</span>
+</div>
+<div>
+<p class="font-h3 text-h3 leading-tight">•••• 4242</p>
+<p class="text-on-surface-variant font-body-md">Visa Corporate Platinum</p>
+</div>
+</div>
+<div class="w-6 h-6 rounded-full bg-primary flex items-center justify-center">
+<div class="w-2.5 h-2.5 rounded-full bg-on-primary"></div>
+</div>
+</div>
+<!-- Digital Wallet -->
+<div class="flex items-center justify-between p-md rounded-xl bg-surface-container-low hover:bg-surface-container transition-colors cursor-pointer">
+<div class="flex items-center gap-md">
+<div class="w-12 h-8 rounded-lg bg-white flex items-center justify-center">
+<span class="text-surface font-bold text-[10px] uppercase">GPay</span>
+</div>
+<div>
+<p class="font-h3 text-h3 leading-tight">Digital Wallet</p>
+<p class="text-on-surface-variant font-body-md">Quick checkout enabled</p>
+</div>
+</div>
+<div class="w-6 h-6 rounded-full border-2 border-outline-variant"></div>
+</div>
+<!-- Add New -->
+<button class="w-full flex items-center justify-center gap-xs py-md rounded-xl border border-dashed border-outline hover:bg-surface-container-lowest transition-colors group">
+<span class="material-symbols-outlined text-outline group-hover:text-primary transition-colors">add_circle</span>
+<span class="text-on-surface-variant font-body-lg">Add new payment method</span>
+</button>
+</div>
+</section>
+<!-- Upsell Banner -->
+<div class="mt-lg relative rounded-xl h-32 overflow-hidden flex items-center px-md group">
+<img alt="" class="absolute inset-0 w-full h-full object-cover" src="https://lh3.googleusercontent.com/aida/ADBb0ugkYHT9Qg_jSjZ6U9A4XI9gId61lkhEVP1y07y64W1ifI0fbMtA3mov7R8_381cvDH_BMAl7JK1A9x9Oe7OAMh8faH4gAubwUCaV4WgMyNhWvgXntTI6ZwPdK75Z7zhAvR9AwWlsUO2-Iw9wxXff0lCka8poclkfCr3fvMeo7QrF4aKC_3ZErGNvzkoAtDFfLm3O4Ge-GUuQX9YudztGiZPpp-vAr4aJL-3-hRT2b0-flBKkAumXk_JN1-Tsbilsrvgio5y-IxETy0"/>
+<div class="absolute inset-0 bg-surface-container-highest/60 backdrop-blur-[2px]"></div>
+<div class="relative z-10 flex-1">
+<p class="text-primary font-h3">Unlock Unlimited Access</p>
+<p class="text-on-surface-variant text-body-md">Switch to a monthly membership &amp; save 40%</p>
+</div>
+<button class="relative z-10 p-sm rounded-full bg-primary text-on-primary active:scale-90 transition-transform">
+<span class="material-symbols-outlined">chevron_right</span>
+</button>
+</div>
+</main>
+<!-- Fixed Action Bar -->
+<div class="fixed bottom-0 w-full bg-surface-container-high/80 backdrop-blur-xl border-t border-outline-variant/20 p-margin z-[100]">
+<div class="max-w-screen-md mx-auto flex items-center gap-md">
+<div class="flex-1">
+<p class="text-on-surface-variant text-body-md font-label-caps">DUE TODAY</p>
+<p class="text-on-surface font-h2">$105.50</p>
+</div>
+<button class="bg-primary-container text-on-primary-container h-12 px-xl rounded-lg font-h3 shadow-xl shadow-primary-container/20 active:scale-[0.98] transition-all flex items-center justify-center gap-sm">
+<span>Pay Now</span>
+<span class="material-symbols-outlined">bolt</span>
+</button>
+</div>
+</div>
+</body></html>

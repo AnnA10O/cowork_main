@@ -1,0 +1,13 @@
+<component name="libraryTable">
+  <library name="co-workspace system">
+    <CLASSES>
+      <root url="jar://$PROJECT_DIR$/nestwork.zip!/" />
+      <root url="jar://$PROJECT_DIR$/stitch_nestwork_booking_space_management.zip!/" />
+      <root url="jar://$PROJECT_DIR$/stitch_deskhub_mobile_workspace_app.zip!/" />
+      <root url="jar://$PROJECT_DIR$/book_my_space.zip!/" />
+      <root url="jar://$PROJECT_DIR$/stitch_nestwork_coworking_app_ui.zip!/" />
+    </CLASSES>
+    <JAVADOC />
+    <SOURCES />
+  </library>
+</component>
