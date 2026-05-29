@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
+import '../../data/api_client.dart';
 import '../../theme/app_colors.dart';
 import '../../widgets/glass_card.dart';
 import '../../widgets/space_card.dart';
@@ -16,13 +17,32 @@ class SpacesScreen extends StatefulWidget {
 class _SpacesScreenState extends State<SpacesScreen> {
   final _searchController = TextEditingController();
   String _searchQuery = '';
+  List<Map<String, dynamic>> _apiSpaces = [];
+  bool _isLoading = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadApiWorkspaces();
+  }
+
+  Future<void> _loadApiWorkspaces() async {
+    setState(() => _isLoading = true);
+    final results = await ApiClient.fetchWorkspaces();
+    if (results != null && results.isNotEmpty) {
+      setState(() {
+        _apiSpaces = results;
+      });
+    }
+    setState(() => _isLoading = false);
+  }
 
   static const _allSpaces = [
     {
       'id': 'fmciii',
       'name': 'FMCIII Executive Lounge',
-      'location': 'Canary Wharf',
-      'price': '£45/day',
+      'location': 'BKC, Mumbai',
+      'price': '₹3,500/day',
       'rating': 4.9,
       'status': AvailabilityStatus.available,
       'image': 'https://images.unsplash.com/photo-1497366216548-37526070297c?w=800&q=80',
@@ -30,9 +50,9 @@ class _SpacesScreenState extends State<SpacesScreen> {
     },
     {
       'id': 'hive_soho',
-      'name': 'Hive Soho Studio',
-      'location': 'Central London',
-      'price': '£12/hr',
+      'name': 'Hive CP Studio',
+      'location': 'Connaught Place, Delhi',
+      'price': '₹950/hr',
       'rating': 4.8,
       'status': AvailabilityStatus.available,
       'image': 'https://images.unsplash.com/photo-1497366754035-f200968a6e72?w=800&q=80',
@@ -41,8 +61,8 @@ class _SpacesScreenState extends State<SpacesScreen> {
     {
       'id': 'the_deck',
       'name': 'The Deck Co-Work',
-      'location': 'Shoreditch',
-      'price': '£15/hr',
+      'location': 'Koramangala, Bengaluru',
+      'price': '₹1,200/hr',
       'rating': 4.9,
       'status': AvailabilityStatus.fillingFast,
       'image': 'https://images.unsplash.com/photo-1462826303086-329426d1aef5?w=800&q=80',
@@ -51,8 +71,8 @@ class _SpacesScreenState extends State<SpacesScreen> {
     {
       'id': 'atlas_labs',
       'name': 'Atlas Labs Cabin',
-      'location': "King's Cross",
-      'price': '£10/hr',
+      'location': 'Whitefield, Bengaluru',
+      'price': '₹800/hr',
       'rating': 4.7,
       'status': AvailabilityStatus.available,
       'image': 'https://images.unsplash.com/photo-1531973576160-7125cd663d86?w=800&q=80',
@@ -61,8 +81,8 @@ class _SpacesScreenState extends State<SpacesScreen> {
     {
       'id': 'vault_prime',
       'name': 'Vault Prime Suite',
-      'location': 'Mayfair',
-      'price': '£25/hr',
+      'location': 'Nariman Point, Mumbai',
+      'price': '₹2,000/hr',
       'rating': 5.0,
       'status': AvailabilityStatus.occupied,
       'image': 'https://images.unsplash.com/photo-1560179707-f14e90ef3623?w=800&q=80',
@@ -71,8 +91,8 @@ class _SpacesScreenState extends State<SpacesScreen> {
     {
       'id': 'glass_house',
       'name': 'The Glass House',
-      'location': 'Central London',
-      'price': '£240/day',
+      'location': 'HSR Layout, Bengaluru',
+      'price': '₹19,000/day',
       'rating': 4.9,
       'status': AvailabilityStatus.available,
       'image': 'https://images.unsplash.com/photo-1504384308090-c894fdcc538d?w=800&q=80',
@@ -81,8 +101,8 @@ class _SpacesScreenState extends State<SpacesScreen> {
     {
       'id': 'founders_hall',
       'name': 'Founders Hall',
-      'location': 'Islington',
-      'price': '£350/day',
+      'location': 'Banjara Hills, Hyderabad',
+      'price': '₹28,000/day',
       'rating': 4.8,
       'status': AvailabilityStatus.available,
       'image': 'https://images.unsplash.com/photo-1582268611958-ebfd161ef9cf?w=800&q=80',
@@ -91,8 +111,8 @@ class _SpacesScreenState extends State<SpacesScreen> {
     {
       'id': 'grand_auditorium',
       'name': 'Grand Auditorium',
-      'location': 'South Bank',
-      'price': '£800/day',
+      'location': 'Indiranagar, Bengaluru',
+      'price': '₹65,000/day',
       'rating': 4.9,
       'status': AvailabilityStatus.available,
       'image': 'https://images.unsplash.com/photo-1540575467063-178a50c2df87?w=800&q=80',
@@ -101,8 +121,8 @@ class _SpacesScreenState extends State<SpacesScreen> {
     {
       'id': 'echo_pod',
       'name': 'Echo Recording Pod',
-      'location': 'Hackney',
-      'price': '£20/hr',
+      'location': 'Navi Mumbai',
+      'price': '₹1,600/hr',
       'rating': 4.8,
       'status': AvailabilityStatus.available,
       'image': 'https://images.unsplash.com/photo-1478737270239-2f02b77fc618?w=800&q=80',
@@ -111,8 +131,8 @@ class _SpacesScreenState extends State<SpacesScreen> {
     {
       'id': 'campus_room',
       'name': 'Campus Training Room',
-      'location': 'Stratford',
-      'price': '£80/half-day',
+      'location': 'Sector 44, Gurgaon',
+      'price': '₹6,500/half-day',
       'rating': 4.6,
       'status': AvailabilityStatus.fillingFast,
       'image': 'https://images.unsplash.com/photo-1524178232363-1fb2b075b655?w=800&q=80',
@@ -121,8 +141,8 @@ class _SpacesScreenState extends State<SpacesScreen> {
     {
       'id': 'nexus_virtual',
       'name': 'Nexus Virtual Office',
-      'location': 'City of London',
-      'price': '£25/month',
+      'location': 'Andheri, Mumbai',
+      'price': '₹2,000/month',
       'rating': 4.7,
       'status': AvailabilityStatus.available,
       'image': 'https://images.unsplash.com/photo-1553877522-43269d4ea984?w=800&q=80',
@@ -131,8 +151,8 @@ class _SpacesScreenState extends State<SpacesScreen> {
     {
       'id': 'bloom_shared',
       'name': 'Bloom Shared Floor',
-      'location': 'Shoreditch',
-      'price': '£8/hr',
+      'location': 'Koramangala, Bengaluru',
+      'price': '₹650/hr',
       'rating': 4.5,
       'status': AvailabilityStatus.available,
       'image': 'https://images.unsplash.com/photo-1497366811353-6870744d04b2?w=800&q=80',
@@ -153,7 +173,26 @@ class _SpacesScreenState extends State<SpacesScreen> {
   };
 
   List<Map<String, dynamic>> get _filteredSpaces {
-    var list = List<Map<String, dynamic>>.from(_allSpaces);
+    final mappedApi = _apiSpaces.map((item) {
+      final plans = item['pricingPlans'] as List?;
+      final firstPlanPrice = (plans != null && plans.isNotEmpty) ? plans[0]['basePrice'] : 199;
+      final images = item['images'] as List?;
+      final imageUrl = (images != null && images.isNotEmpty) 
+          ? images[0]['url'] 
+          : 'https://images.unsplash.com/photo-1497366216548-37526070297c?w=800&q=80';
+      return {
+        'id': item['id'].toString(),
+        'name': item['name'] ?? 'CoWork Space',
+        'location': '${item['city'] ?? ''}, ${item['state'] ?? ''}',
+        'price': '₹$firstPlanPrice/day',
+        'rating': 4.9,
+        'status': AvailabilityStatus.available,
+        'image': imageUrl,
+        'type': 'hot_desk', // Map database workspaces as hot_desk category in UI
+      };
+    }).toList();
+
+    var list = [...mappedApi, ..._allSpaces];
     if (widget.spaceType != 'all') {
       list = list.where((s) => s['type'] == widget.spaceType).toList();
     }
@@ -337,7 +376,7 @@ class _SpacesScreenState extends State<SpacesScreen> {
                       crossAxisCount: 2,
                       crossAxisSpacing: 12,
                       mainAxisSpacing: 16,
-                      childAspectRatio: 0.65,
+                      childAspectRatio: 0.56,
                     ),
                     itemCount: spaces.length,
                     itemBuilder: (context, i) {

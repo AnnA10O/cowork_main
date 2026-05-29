@@ -304,7 +304,7 @@ class _WorkspaceCategoryScreenState extends State<WorkspaceCategoryScreen> {
                       crossAxisCount: 2,
                       mainAxisSpacing: 14,
                       crossAxisSpacing: 14,
-                      childAspectRatio: 0.65,
+                      childAspectRatio: 0.56,
                     ),
                     itemCount: spaces.length,
                     itemBuilder: (context, i) {

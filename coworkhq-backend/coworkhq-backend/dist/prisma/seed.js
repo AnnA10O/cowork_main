@@ -1,0 +1,185 @@
+"use strict";
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || (function () {
+    var ownKeys = function(o) {
+        ownKeys = Object.getOwnPropertyNames || function (o) {
+            var ar = [];
+            for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) ar[ar.length] = k;
+            return ar;
+        };
+        return ownKeys(o);
+    };
+    return function (mod) {
+        if (mod && mod.__esModule) return mod;
+        var result = {};
+        if (mod != null) for (var k = ownKeys(mod), i = 0; i < k.length; i++) if (k[i] !== "default") __createBinding(result, mod, k[i]);
+        __setModuleDefault(result, mod);
+        return result;
+    };
+})();
+Object.defineProperty(exports, "__esModule", { value: true });
+const client_1 = require("@prisma/client");
+const bcrypt = __importStar(require("bcryptjs"));
+const prisma = new client_1.PrismaClient();
+async function main() {
+    console.log('🌱 Seeding CoWork HQ database...');
+    const adminEmail = process.env.ADMIN_EMAIL || 'admin@coworkhq.in';
+    const adminPassword = process.env.ADMIN_PASSWORD || 'Admin@123456';
+    const adminName = process.env.ADMIN_NAME || 'CoWork HQ Admin';
+    const existingAdmin = await prisma.user.findUnique({ where: { email: adminEmail } });
+    if (!existingAdmin) {
+        const passwordHash = await bcrypt.hash(adminPassword, 12);
+        const admin = await prisma.user.create({
+            data: {
+                email: adminEmail,
+                name: adminName,
+                passwordHash,
+                role: client_1.Role.ADMIN,
+                adminProfile: { create: {} },
+            },
+        });
+        console.log(`✅ Admin created: ${admin.email}`);
+    }
+    else {
+        console.log(`⏭️  Admin already exists: ${adminEmail}`);
+    }
+    const managerEmail = 'manager@skycowork.in';
+    let managerUser = await prisma.user.findUnique({ where: { email: managerEmail } });
+    if (!managerUser) {
+        const passwordHash = await bcrypt.hash('Manager@123', 12);
+        managerUser = await prisma.user.create({
+            data: {
+                email: managerEmail,
+                name: 'Raj Sharma',
+                phone: '+919876543210',
+                passwordHash,
+                role: client_1.Role.MANAGER,
+                managerProfile: {
+                    create: {
+                        businessName: 'Sky CoWork Spaces',
+                        gstNumber: '27AADCB2230M1ZT',
+                    },
+                },
+            },
+        });
+        console.log(`✅ Sample manager created: ${managerUser.email}`);
+    }
+    const manager = await prisma.manager.findUnique({ where: { userId: managerUser.id } });
+    let workspace = await prisma.workspace.findFirst({ where: { managerId: manager.id } });
+    if (!workspace) {
+        workspace = await prisma.workspace.create({
+            data: {
+                managerId: manager.id,
+                name: 'Sky CoWork — Koregaon Park',
+                description: 'Premium co-working space in the heart of Koregaon Park, Pune. High-speed WiFi, standing desks, and a great café.',
+                address: '101, North Main Road, Koregaon Park',
+                city: 'Pune',
+                state: 'Maharashtra',
+                pincode: '411001',
+                latitude: 18.5362,
+                longitude: 73.8941,
+                googleMapsUrl: 'https://maps.google.com/?q=Koregaon+Park+Pune',
+                amenities: ['High-Speed WiFi', 'Cafeteria', 'Parking', 'AC', 'Lockers', 'Printing', 'Meeting Room'],
+                workingHours: {
+                    create: [
+                        { day: client_1.DayOfWeek.MON, openTime: '08:00', closeTime: '22:00' },
+                        { day: client_1.DayOfWeek.TUE, openTime: '08:00', closeTime: '22:00' },
+                        { day: client_1.DayOfWeek.WED, openTime: '08:00', closeTime: '22:00' },
+                        { day: client_1.DayOfWeek.THU, openTime: '08:00', closeTime: '22:00' },
+                        { day: client_1.DayOfWeek.FRI, openTime: '08:00', closeTime: '22:00' },
+                        { day: client_1.DayOfWeek.SAT, openTime: '09:00', closeTime: '20:00' },
+                        { day: client_1.DayOfWeek.SUN, openTime: '10:00', closeTime: '18:00', isClosed: false },
+                    ],
+                },
+            },
+        });
+        console.log(`✅ Workspace created: ${workspace.name}`);
+    }
+    const existingPlans = await prisma.pricingPlan.count({ where: { workspaceId: workspace.id } });
+    if (existingPlans === 0) {
+        await prisma.pricingPlan.createMany({
+            data: [
+                { workspaceId: workspace.id, name: 'Day Pass', type: client_1.PricingType.DAILY, basePrice: 199 },
+                { workspaceId: workspace.id, name: 'Weekly Hot Desk', type: client_1.PricingType.WEEKLY, basePrice: 999 },
+                { workspaceId: workspace.id, name: 'Monthly Hot Desk', type: client_1.PricingType.MONTHLY, basePrice: 2999 },
+                { workspaceId: workspace.id, name: 'Hourly', type: client_1.PricingType.HOURLY, basePrice: 49 },
+            ],
+        });
+        console.log('✅ Pricing plans created');
+    }
+    const existingDesks = await prisma.desk.count({ where: { workspaceId: workspace.id } });
+    if (existingDesks === 0) {
+        const desks = [];
+        for (let i = 1; i <= 8; i++) {
+            desks.push({ workspaceId: workspace.id, deskNumber: `A${i}`, type: 'standard', premiumExtra: 0 });
+        }
+        for (let i = 1; i <= 6; i++) {
+            desks.push({ workspaceId: workspace.id, deskNumber: `B${i}`, type: 'window', description: 'Window view', premiumExtra: 75 });
+        }
+        for (let i = 1; i <= 4; i++) {
+            desks.push({ workspaceId: workspace.id, deskNumber: `C${i}`, type: 'private', description: 'Private cabin desk', premiumExtra: 150 });
+        }
+        await prisma.desk.createMany({ data: desks });
+        console.log(`✅ ${desks.length} desks created`);
+    }
+    const deskList = await prisma.desk.findMany({ where: { workspaceId: workspace.id } });
+    const existingQRs = await prisma.qrCode.count({ where: { workspaceId: workspace.id } });
+    if (existingQRs === 0) {
+        await prisma.qrCode.create({ data: { workspaceId: workspace.id } });
+        await prisma.qrCode.createMany({
+            data: deskList.map((d) => ({ workspaceId: workspace.id, deskId: d.id })),
+        });
+        console.log(`✅ ${deskList.length + 1} QR codes generated`);
+    }
+    const customerEmail = 'customer@test.com';
+    const existingCustomer = await prisma.user.findUnique({ where: { email: customerEmail } });
+    if (!existingCustomer) {
+        const passwordHash = await bcrypt.hash('Customer@123', 12);
+        await prisma.user.create({
+            data: {
+                email: customerEmail,
+                name: 'Priya Patel',
+                phone: '+919123456789',
+                passwordHash,
+                role: client_1.Role.CUSTOMER,
+                customerProfile: { create: {} },
+            },
+        });
+        console.log(`✅ Sample customer created: ${customerEmail}`);
+    }
+    const existingCode = await prisma.staffCode.findFirst({ where: { managerId: manager.id } });
+    if (!existingCode) {
+        const expiresAt = new Date();
+        expiresAt.setDate(expiresAt.getDate() + 30);
+        await prisma.staffCode.create({
+            data: { managerId: manager.id, code: 'STAFF001', expiresAt },
+        });
+        console.log('✅ Sample staff code created: STAFF001');
+    }
+    console.log('\n🎉 Seed complete!');
+    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+    console.log(`Admin:    ${adminEmail} / ${adminPassword}`);
+    console.log(`Manager:  ${managerEmail} / Manager@123`);
+    console.log(`Customer: ${customerEmail} / Customer@123`);
+    console.log(`Staff code to test staff registration: STAFF001`);
+    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+}
+main()
+    .catch((e) => { console.error(e); process.exit(1); })
+    .finally(async () => { await prisma.$disconnect(); });
+//# sourceMappingURL=seed.js.map

@@ -171,7 +171,7 @@ class _EPassTicket extends StatelessWidget {
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Text(
-                      'London',
+                      'India',
                       style: GoogleFonts.inter(
                         fontSize: 20,
                         fontWeight: FontWeight.w600,
@@ -214,7 +214,7 @@ class _EPassTicket extends StatelessWidget {
                     ],
                   ),
                   child: QrImageView(
-                    data: 'BOOKMYSPACE-$ref-LONDON',
+                    data: 'BOOKMYSPACE-$ref-INDIA',
                     version: QrVersions.auto,
                     size: 160,
                     backgroundColor: Colors.white,

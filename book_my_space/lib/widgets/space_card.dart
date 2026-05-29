@@ -29,9 +29,10 @@ class SpaceCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return GestureDetector(
       onTap: onTap,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
+      child: ClipRect(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
           // Image
           AspectRatio(
             aspectRatio: 4 / 5,
@@ -109,12 +110,16 @@ class SpaceCard extends StatelessWidget {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Text(
-                      price,
-                      style: GoogleFonts.inter(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w700,
-                        color: AppColors.primary,
+                    Flexible(
+                      child: Text(
+                        price,
+                        style: GoogleFonts.inter(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w700,
+                          color: AppColors.primary,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                       ),
                     ),
                     AvailabilityDot(status: status),
@@ -124,7 +129,8 @@ class SpaceCard extends StatelessWidget {
             ),
           ),
         ],
-      ),
+      ), // Column
+      ), // ClipRect
     );
   }
 }

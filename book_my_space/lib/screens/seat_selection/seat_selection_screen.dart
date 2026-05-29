@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
+import '../../data/api_client.dart';
 import '../../theme/app_colors.dart';
 import '../../data/workspace_data.dart';
 
@@ -61,6 +62,89 @@ class _SeatSelectionScreenState extends State<SeatSelectionScreen> {
   void initState() {
     super.initState();
     _space = WorkspaceDataService.getSpace(widget.spaceId);
+    _loadDeskAvailability();
+  }
+
+  Future<void> _loadDeskAvailability() async {
+    final todayStr = DateTime.now().toIso8601String().substring(0, 10);
+    final results = await ApiClient.fetchDeskAvailability(widget.spaceId, todayStr);
+    if (results != null && results.isNotEmpty) {
+      final Map<String, bool> availabilityMap = {};
+      for (final res in results) {
+        final deskNumber = res['deskNumber']?.toString().toLowerCase();
+        final id = res['id']?.toString();
+        final isAvailable = res['isAvailable'] == true;
+        if (deskNumber != null) {
+          availabilityMap[deskNumber] = isAvailable;
+        }
+        if (id != null) {
+          availabilityMap[id] = isAvailable;
+        }
+      }
+
+      final List<SeatCategory> updatedCategories = _space.seatCategories.map((cat) {
+        final updatedOptions = cat.options.map((opt) {
+          final optId = opt.id;
+          final labelKey = opt.label.replaceAll(RegExp(r'[^a-zA-Z0-9]'), '').toLowerCase();
+          
+          bool isAvailable = true;
+          bool hasMatch = false;
+
+          if (availabilityMap.containsKey(optId)) {
+            isAvailable = availabilityMap[optId]!;
+            hasMatch = true;
+          } else {
+            for (final entry in availabilityMap.entries) {
+              if (labelKey.contains(entry.key)) {
+                isAvailable = entry.value;
+                hasMatch = true;
+                break;
+              }
+            }
+          }
+
+          if (hasMatch) {
+            return SeatOption(
+              id: opt.id,
+              label: opt.label,
+              price: opt.price,
+              status: isAvailable ? 'available' : 'occupied',
+              statusColor: isAvailable ? AppColors.available : AppColors.occupied,
+              perks: opt.perks,
+              imageUrl: opt.imageUrl,
+              seatType: opt.seatType,
+            );
+          }
+          return opt;
+        }).toList();
+
+        return SeatCategory(
+          id: cat.id,
+          label: cat.label,
+          icon: cat.icon,
+          description: cat.description,
+          options: updatedOptions,
+        );
+      }).toList();
+
+      setState(() {
+        _space = SpaceInfo(
+          id: _space.id,
+          name: _space.name,
+          subtitle: _space.subtitle,
+          imageUrl: _space.imageUrl,
+          rating: _space.rating,
+          reviews: _space.reviews,
+          startingPrice: _space.startingPrice,
+          priceLabel: _space.priceLabel,
+          description: _space.description,
+          amenities: _space.amenities,
+          badge: _space.badge,
+          showSchedulePicker: _space.showSchedulePicker,
+          seatCategories: updatedCategories,
+        );
+      });
+    }
   }
 
   List<SeatOption> get _allOptions =>
@@ -106,11 +190,13 @@ class _SeatSelectionScreenState extends State<SeatSelectionScreen> {
       'seatTypeKey': selected.seatType,
       'price': selected.price,
       'perks': selected.perks,
+      'deskId': selected.id,
     });
   }
 
   Widget _buildBottomBar(SeatOption? selected, VoidCallback onProceed) {
     return Container(
+      width: double.infinity,
       decoration: BoxDecoration(
         color: AppColors.surfaceContainer,
         border: Border(
@@ -152,6 +238,8 @@ class _SeatSelectionScreenState extends State<SeatSelectionScreen> {
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppColors.primaryContainer,
                   disabledBackgroundColor: AppColors.surfaceContainerHighest,
+                  minimumSize: Size.zero,
+                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                   padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 14),
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                 ),

@@ -2,9 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
+import 'dart:developer' as dev;
 import '../../theme/app_colors.dart';
 import '../../data/app_data.dart';
 import '../../models/booking_model.dart';
+import '../../data/api_client.dart';
 
 class BookingsScreen extends StatefulWidget {
   const BookingsScreen({super.key});
@@ -16,11 +18,14 @@ class BookingsScreen extends StatefulWidget {
 class _BookingsScreenState extends State<BookingsScreen>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
+  List<BookingModel>? _liveBookings;
+  bool _isLoading = false;
 
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 3, vsync: this);
+    _loadLiveBookings();
   }
 
   @override
@@ -29,8 +34,108 @@ class _BookingsScreenState extends State<BookingsScreen>
     super.dispose();
   }
 
-  List<BookingModel> _filtered(String status) =>
-      AppData.bookings.where((b) => b.status == status).toList();
+  Future<void> _loadLiveBookings() async {
+    final token = ApiClient.authToken;
+    if (token == null) return;
+
+    setState(() {
+      _isLoading = true;
+    });
+
+    try {
+      final results = await ApiClient.fetchMyBookings(token);
+      if (results != null) {
+        final List<BookingModel> list = [];
+        for (final r in results) {
+          list.add(_mapToBookingModel(r));
+        }
+        if (mounted) {
+          setState(() {
+            _liveBookings = list;
+          });
+        }
+      }
+    } catch (e) {
+      dev.log('Error loading live bookings: $e');
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    }
+  }
+
+  BookingModel _mapToBookingModel(Map<String, dynamic> b) {
+    final workspace = b['workspace'] as Map? ?? {};
+    final desk = b['desk'] as Map? ?? {};
+    final startTimeStr = b['startTime'] as String? ?? '';
+    final endTimeStr = b['endTime'] as String? ?? '';
+    
+    DateTime parsedDate = DateTime.now();
+    String formattedStartTime = '09:00 AM';
+    String formattedEndTime = '06:00 PM';
+    
+    try {
+      if (startTimeStr.isNotEmpty) {
+        final dt = DateTime.parse(startTimeStr).toLocal();
+        parsedDate = dt;
+        formattedStartTime = DateFormat('hh:mm a').format(dt);
+      }
+      if (endTimeStr.isNotEmpty) {
+        final dt = DateTime.parse(endTimeStr).toLocal();
+        formattedEndTime = DateFormat('hh:mm a').format(dt);
+      }
+    } catch (e) {
+      dev.log('Error parsing booking dates: $e');
+    }
+
+    final finalAmountRaw = b['finalAmount'];
+    double finalAmount = 199.0;
+    if (finalAmountRaw is num) {
+      finalAmount = finalAmountRaw.toDouble();
+    } else if (finalAmountRaw is String) {
+      finalAmount = double.tryParse(finalAmountRaw) ?? 199.0;
+    }
+
+    final prismaStatus = (b['status'] as String? ?? 'PENDING').toLowerCase();
+    String uiStatus = 'upcoming';
+    if (prismaStatus == 'confirmed') {
+      uiStatus = 'upcoming';
+    } else if (prismaStatus == 'completed') {
+      uiStatus = 'completed';
+    } else if (prismaStatus == 'cancelled') {
+      uiStatus = 'cancelled';
+    } else if (prismaStatus == 'pending') {
+      uiStatus = 'upcoming';
+    }
+
+    final id = b['id']?.toString() ?? '';
+    final ref = id.length > 8 ? id.substring(0, 8).toUpperCase() : id;
+
+    return BookingModel(
+      id: id,
+      spaceName: workspace['name']?.toString() ?? 'Workspace',
+      spaceLocation: workspace['address']?.toString() ?? workspace['city']?.toString() ?? 'Location',
+      spaceImageUrl: 'https://images.unsplash.com/photo-1497366216548-37526070297c?w=400&q=80',
+      workspaceName: workspace['name']?.toString() ?? 'Workspace',
+      seatId: 'Desk ${desk['deskNumber']?.toString() ?? 'A'}',
+      location: workspace['city']?.toString() ?? 'Location',
+      date: parsedDate,
+      startTime: formattedStartTime,
+      endTime: formattedEndTime,
+      totalAmount: finalAmount,
+      bookingRef: ref,
+      status: uiStatus,
+    );
+  }
+
+  List<BookingModel> _filtered(String status) {
+    if (_liveBookings != null) {
+      return _liveBookings!.where((b) => b.status == status).toList();
+    }
+    return AppData.bookings.where((b) => b.status == status).toList();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -75,16 +180,27 @@ class _BookingsScreenState extends State<BookingsScreen>
           ],
         ),
       ),
-      body: TabBarView(
-        controller: _tabController,
-        children: [
-          _BookingList(
-              bookings: _filtered('confirmed') + _filtered('upcoming'),
-              tab: 'upcoming'),
-          _BookingList(bookings: [], tab: 'active'),
-          _BookingList(bookings: _filtered('completed'), tab: 'past'),
-        ],
-      ),
+      body: _isLoading
+          ? const Center(
+              child: CircularProgressIndicator(color: AppColors.primary),
+            )
+          : TabBarView(
+              controller: _tabController,
+              children: [
+                _BookingList(
+                    bookings: _filtered('confirmed') + _filtered('upcoming'),
+                    tab: 'upcoming',
+                    onRefresh: _loadLiveBookings),
+                _BookingList(
+                    bookings: [],
+                    tab: 'active',
+                    onRefresh: _loadLiveBookings),
+                _BookingList(
+                    bookings: _filtered('completed'),
+                    tab: 'past',
+                    onRefresh: _loadLiveBookings),
+              ],
+            ),
     );
   }
 }
@@ -92,19 +208,42 @@ class _BookingsScreenState extends State<BookingsScreen>
 class _BookingList extends StatelessWidget {
   final List<BookingModel> bookings;
   final String tab;
-  const _BookingList({required this.bookings, required this.tab});
+  final RefreshCallback? onRefresh;
+  const _BookingList({required this.bookings, required this.tab, this.onRefresh});
 
   @override
   Widget build(BuildContext context) {
     if (bookings.isEmpty) {
-      return _EmptyState();
+      return onRefresh != null
+          ? RefreshIndicator(
+              onRefresh: onRefresh!,
+              child: SingleChildScrollView(
+                physics: const AlwaysScrollableScrollPhysics(),
+                child: ConstrainedBox(
+                  constraints: BoxConstraints(
+                    minHeight: MediaQuery.of(context).size.height - 200,
+                  ),
+                  child: Center(child: _EmptyState()),
+                ),
+              ),
+            )
+          : _EmptyState();
     }
-    return ListView.separated(
+    
+    final listWidget = ListView.separated(
+      physics: const AlwaysScrollableScrollPhysics(),
       padding: const EdgeInsets.all(20),
       itemCount: bookings.length,
       separatorBuilder: (_, __) => const SizedBox(height: 14),
       itemBuilder: (context, i) => _BookingCard(booking: bookings[i]),
     );
+
+    return onRefresh != null
+        ? RefreshIndicator(
+            onRefresh: onRefresh!,
+            child: listWidget,
+          )
+        : listWidget;
   }
 }
 
@@ -248,22 +387,30 @@ class _BookingCard extends StatelessWidget {
                         const Icon(Icons.calendar_today_rounded,
                             color: AppColors.onSurfaceVariant, size: 11),
                         const SizedBox(width: 4),
-                        Text(
-                          dateStr,
-                          style: GoogleFonts.inter(
-                            color: AppColors.onSurfaceVariant,
-                            fontSize: 11.5,
+                        Flexible(
+                          child: Text(
+                            dateStr,
+                            style: GoogleFonts.inter(
+                              color: AppColors.onSurfaceVariant,
+                              fontSize: 11.5,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
                           ),
                         ),
                         const SizedBox(width: 10),
                         const Icon(Icons.schedule_rounded,
                             color: AppColors.onSurfaceVariant, size: 11),
                         const SizedBox(width: 4),
-                        Text(
-                          '${booking.startTime} – ${booking.endTime}',
-                          style: GoogleFonts.inter(
-                            color: AppColors.onSurfaceVariant,
-                            fontSize: 11.5,
+                        Flexible(
+                          child: Text(
+                            '${booking.startTime} – ${booking.endTime}',
+                            style: GoogleFonts.inter(
+                              color: AppColors.onSurfaceVariant,
+                              fontSize: 11.5,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
                           ),
                         ),
                       ],

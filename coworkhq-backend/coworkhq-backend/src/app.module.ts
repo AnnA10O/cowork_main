@@ -12,6 +12,7 @@ import { NotificationsModule } from './notifications/notifications.module';
 import { IssuesModule } from './issues/issues.module';
 import { StaffModule } from './staff/staff.module';
 import { AdminModule } from './admin/admin.module';
+import { MobileModule } from './mobile/mobile.module';
 
 import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
 import { RolesGuard } from './common/guards/roles.guard';
@@ -31,6 +32,7 @@ import { TransformInterceptor } from './common/interceptors/transform.intercepto
     IssuesModule,
     StaffModule,
     AdminModule,
+    MobileModule,
   ],
   providers: [
     { provide: APP_GUARD,       useClass: JwtAuthGuard },

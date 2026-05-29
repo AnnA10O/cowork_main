@@ -107,7 +107,7 @@ class SpaceTypeScreen extends StatelessWidget {
                 const Icon(Icons.location_on, color: AppColors.primary, size: 20),
                 const SizedBox(width: 6),
                 Text(
-                  'London',
+                  'India',
                   style: GoogleFonts.inter(
                     fontSize: 22,
                     fontWeight: FontWeight.w700,

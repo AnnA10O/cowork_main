@@ -27,7 +27,7 @@ class SeatOption {
     this.seatType = 'shared_desk',
   });
 
-  String get priceLabel => '£${price.toStringAsFixed(0)}';
+  String get priceLabel => '₹${price.toStringAsFixed(0)}';
 }
 
 // ---------------------------------------------------------------------------
@@ -532,7 +532,7 @@ class WorkspaceDataService {
     'fmciii': SpaceInfo(
       id: 'fmciii',
       name: 'FMCIII',
-      subtitle: 'Executive Lounge • London District',
+      subtitle: 'Executive Lounge • BKC, Mumbai',
       imageUrl:
       'https://images.unsplash.com/photo-1497366216548-37526070297c?w=1200&q=80',
       rating: 4.9,
@@ -540,7 +540,7 @@ class WorkspaceDataService {
       startingPrice: 40,
       priceLabel: '/ day',
       description:
-      'FMCIII is a meticulously engineered workspace designed for the high-performing professional. Blending modern corporate reliability with an atmosphere of quiet luxury, this environment features sound-dampened meeting pods, ergonomic workstations, and panoramic views of the London skyline.',
+      'FMCIII is a meticulously engineered workspace designed for the high-performing professional. Blending modern corporate reliability with an atmosphere of quiet luxury, this environment features sound-dampened meeting pods, ergonomic workstations, and panoramic views of the Mumbai skyline.',
       amenities: [
         {'icon': Icons.wifi, 'label': 'Gigabit Fiber'},
         {'icon': Icons.coffee, 'label': 'Artisan Café'},
@@ -562,7 +562,7 @@ class WorkspaceDataService {
       startingPrice: 180,
       priceLabel: '/ day',
       description:
-      'Designed for high-performance teams, The Glass House offers a seamless blend of transparency and privacy. Situated on the corner of the 2nd floor, it provides sweeping views of the atrium while maintaining soundproof integrity for your most critical strategy sessions.',
+      'Designed for high-performance teams, The Glass House offers a seamless blend of transparency and privacy. Situated on the 2nd floor of one of BKC\'s premier office towers, it provides sweeping views of the atrium while maintaining soundproof integrity for your most critical strategy sessions.',
       amenities: [
         {'icon': Icons.wifi, 'label': 'High-speed WiFi'},
         {'icon': Icons.ac_unit, 'label': 'Climate Control'},
@@ -574,8 +574,8 @@ class WorkspaceDataService {
     ),
     'hive_soho': SpaceInfo(
       id: 'hive_soho',
-      name: 'Hive Soho',
-      subtitle: 'Creative Cowork • Soho, Central London',
+      name: 'Hive CP',
+      subtitle: 'Creative Cowork • Connaught Place, Delhi',
       imageUrl:
       'https://images.unsplash.com/photo-1497366754035-f200968a6e72?w=1200&q=80',
       rating: 4.8,
@@ -583,7 +583,7 @@ class WorkspaceDataService {
       startingPrice: 12,
       priceLabel: '/ hr',
       description:
-      'Hive Soho is a vibrant creative co-working studio nestled in the heart of Soho. With exposed brick walls, industrial lighting, and an energetic community of freelancers and entrepreneurs, it is the ideal place to spark creativity and connect with like-minded professionals.',
+      'Hive CP is a vibrant creative co-working studio nestled in the heart of Connaught Place. With exposed brick walls, industrial lighting, and an energetic community of freelancers and entrepreneurs, it is the ideal place to spark creativity and connect with like-minded professionals.',
       amenities: [
         {'icon': Icons.wifi, 'label': 'Super-fast WiFi'},
         {'icon': Icons.coffee, 'label': 'Coffee Bar'},
@@ -596,7 +596,7 @@ class WorkspaceDataService {
     'the_deck': SpaceInfo(
       id: 'the_deck',
       name: 'The Deck Co-Work',
-      subtitle: 'Rooftop Workspace • Shoreditch',
+      subtitle: 'Rooftop Workspace • Koramangala, Bengaluru',
       imageUrl:
       'https://images.unsplash.com/photo-1462826303086-329426d1aef5?w=1200&q=80',
       rating: 4.9,
@@ -604,7 +604,7 @@ class WorkspaceDataService {
       startingPrice: 15,
       priceLabel: '/ hr',
       description:
-      'The Deck offers a one-of-a-kind rooftop co-working experience in the heart of Shoreditch. With open-air seating, unobstructed city views, and a buzzing atmosphere, it is designed for those who work best when inspired by their surroundings.',
+      'The Deck offers a one-of-a-kind rooftop co-working experience in the heart of Koramangala. With open-air seating, unobstructed city views, and a buzzing atmosphere, it is designed for those who work best when inspired by their surroundings.',
       amenities: [
         {'icon': Icons.wifi, 'label': 'Fast WiFi'},
         {'icon': Icons.wb_sunny, 'label': 'Rooftop Access'},
@@ -617,7 +617,7 @@ class WorkspaceDataService {
     'atlas_labs': SpaceInfo(
       id: 'atlas_labs',
       name: 'Atlas Labs',
-      subtitle: 'Innovation Hub • King\'s Cross',
+      subtitle: 'Innovation Hub • Whitefield, Bengaluru',
       imageUrl:
       'https://images.unsplash.com/photo-1531973576160-7125cd663d86?w=1200&q=80',
       rating: 4.7,
@@ -638,7 +638,7 @@ class WorkspaceDataService {
     'vault_prime': SpaceInfo(
       id: 'vault_prime',
       name: 'Vault Prime Suite',
-      subtitle: 'Executive Meetings • Mayfair',
+      subtitle: 'Executive Meetings • Nariman Point, Mumbai',
       imageUrl:
       'https://images.unsplash.com/photo-1560179707-f14e90ef3623?w=1200&q=80',
       rating: 5.0,
@@ -646,7 +646,7 @@ class WorkspaceDataService {
       startingPrice: 80,
       priceLabel: '/ session',
       description:
-      'Vault Prime Suite delivers an uncompromising meeting experience in the prestigious heart of Mayfair. With premium furnishings, state-of-the-art AV, and a dedicated concierge, every session feels like a boardroom that means business.',
+      'Vault Prime Suite delivers an uncompromising meeting experience at the prestigious Nariman Point, Mumbai. With premium furnishings, state-of-the-art AV, and a dedicated concierge, every session feels like a boardroom that means business.',
       amenities: [
         {'icon': Icons.wifi, 'label': 'Gigabit Fiber'},
         {'icon': Icons.coffee, 'label': 'Concierge Service'},
@@ -672,7 +672,7 @@ class WorkspaceDataService {
     return SpaceInfo(
       id: spaceId,
       name: name,
-      subtitle: 'Co-working Space • London',
+      subtitle: 'Co-working Space • India',
       imageUrl:
       'https://images.unsplash.com/photo-1497366216548-37526070297c?w=1200&q=80',
       rating: 4.5,

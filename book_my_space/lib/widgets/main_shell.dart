@@ -9,12 +9,12 @@ class MainShell extends StatelessWidget {
 
   int _locationToIndex(BuildContext context) {
     final location = GoRouterState.of(context).matchedLocation;
-    if (location.startsWith('/space-types') || location.startsWith('/spaces')) return 1;
-    if (location.startsWith('/bookings')) return 2;
-    if (location.startsWith('/profile')) return 3;
+    if (location.startsWith('/map')) return 1;
+    if (location.startsWith('/space-types') || location.startsWith('/spaces')) return 2;
+    if (location.startsWith('/bookings')) return 3;
+    if (location.startsWith('/profile')) return 4;
     return 0;
   }
-
 
   @override
   Widget build(BuildContext context) {
@@ -33,11 +33,11 @@ class _BottomNav extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final items = [
-      (Icons.home_outlined, Icons.home, 'Home', '/home'),
-      (Icons.workspaces_outlined, Icons.workspaces, 'Spaces', '/space-types'),
+      (Icons.home_outlined,       Icons.home,            'Home',     '/home'),
+      (Icons.map_outlined,        Icons.map,             'Map',      '/map'),
+      (Icons.workspaces_outlined, Icons.workspaces,      'Spaces',   '/space-types'),
       (Icons.event_available_outlined, Icons.event_available, 'Bookings', '/bookings'),
-      (Icons.person_outline, Icons.person, 'Profile', '/profile'),
-
+      (Icons.person_outline,      Icons.person,          'Profile',  '/profile'),
     ];
 
     return Container(
@@ -58,30 +58,32 @@ class _BottomNav extends StatelessWidget {
             onTap: () => context.go(path),
             child: AnimatedContainer(
               duration: const Duration(milliseconds: 200),
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
               decoration: isActive
                   ? BoxDecoration(
-                color: AppColors.primaryContainer,
-                borderRadius: BorderRadius.circular(24),
-              )
+                      color: AppColors.primaryContainer,
+                      borderRadius: BorderRadius.circular(24),
+                    )
                   : null,
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   Icon(
                     isActive ? filledIcon : outlinedIcon,
-                    color: isActive ? AppColors.onPrimaryContainer : AppColors.onSurfaceVariant,
-                    size: 24,
+                    color: isActive
+                        ? AppColors.onPrimaryContainer
+                        : AppColors.onSurfaceVariant,
+                    size: 22,
                   ),
                   const SizedBox(height: 2),
-                  Text(
-                    label,
-                    style: GoogleFonts.inter(
-                      fontSize: 10,
-                      fontWeight: FontWeight.w500,
-                      color: isActive ? AppColors.onPrimaryContainer : AppColors.onSurfaceVariant,
-                    ),
-                  ),
+                  Text(label,
+                      style: GoogleFonts.inter(
+                        fontSize: 9,
+                        fontWeight: FontWeight.w500,
+                        color: isActive
+                            ? AppColors.onPrimaryContainer
+                            : AppColors.onSurfaceVariant,
+                      )),
                 ],
               ),
             ),

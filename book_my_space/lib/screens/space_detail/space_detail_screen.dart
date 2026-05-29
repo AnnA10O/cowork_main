@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
+import '../../data/api_client.dart';
 import '../../theme/app_colors.dart';
 import '../../data/workspace_data.dart';
 
@@ -17,12 +18,102 @@ class _SpaceDetailScreenState extends State<SpaceDetailScreen>
   late TabController _tabController;
   bool _isFavorite = false;
   late SpaceInfo _space;
+  bool _isLoadingDetail = false;
 
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
+    // Initialize immediately with local fallback
     _space = WorkspaceDataService.getSpace(widget.spaceId);
+    _loadLiveDetail();
+  }
+
+  Future<void> _loadLiveDetail() async {
+    setState(() => _isLoadingDetail = true);
+    final data = await ApiClient.fetchWorkspaceDetail(widget.spaceId);
+    if (data != null) {
+      final plans = data['pricingPlans'] as List?;
+      final double startingPrice = (plans != null && plans.isNotEmpty) 
+          ? (plans[0]['basePrice'] as num).toDouble() 
+          : 199.0;
+      final images = data['images'] as List?;
+      final imageUrl = (images != null && images.isNotEmpty) 
+          ? images[0]['url'] 
+          : 'https://images.unsplash.com/photo-1497366216548-37526070297c?w=1200&q=80';
+
+      final amenitiesStrings = data['amenities'] as List?;
+      final List<Map<String, dynamic>> mappedAmenities = [];
+      if (amenitiesStrings != null) {
+        for (final item in amenitiesStrings) {
+          final str = item.toString().toLowerCase();
+          IconData icon = Icons.check_circle_outline;
+          if (str.contains('wifi')) icon = Icons.wifi;
+          else if (str.contains('caf') || str.contains('coffee')) icon = Icons.coffee;
+          else if (str.contains('print')) icon = Icons.print;
+          else if (str.contains('parking')) icon = Icons.local_parking;
+          else if (str.contains('ac') || str.contains('climate')) icon = Icons.ac_unit;
+          else if (str.contains('meet')) icon = Icons.meeting_room;
+          else if (str.contains('lounge')) icon = Icons.weekend;
+
+          mappedAmenities.add({'icon': icon, 'label': item.toString()});
+        }
+      }
+
+      if (mappedAmenities.isEmpty) {
+        mappedAmenities.addAll([
+          {'icon': Icons.wifi, 'label': 'High-Speed WiFi'},
+          {'icon': Icons.coffee, 'label': 'Artisan Café'},
+        ]);
+      }
+
+      final desks = data['desks'] as List?;
+      final List<SeatOption> options = [];
+      if (desks != null) {
+        for (final desk in desks) {
+          final premiumExtra = (desk['premiumExtra'] as num?)?.toDouble() ?? 0.0;
+          options.add(SeatOption(
+            id: desk['id'].toString(),
+            label: 'Desk ${desk['deskNumber']}',
+            price: startingPrice + premiumExtra,
+            status: desk['isActive'] == true ? 'available' : 'occupied',
+            statusColor: desk['isActive'] == true ? AppColors.available : AppColors.occupied,
+            perks: [desk['description'] ?? 'Workspace Desk'],
+            imageUrl: 'https://images.unsplash.com/photo-1497366216548-37526070297c?w=800&q=80',
+            seatType: desk['type'] ?? 'shared_desk',
+          ));
+        }
+      }
+
+      final List<SeatCategory> categories = [
+        SeatCategory(
+          id: 'desks',
+          label: 'Desks Seating',
+          icon: Icons.desktop_windows,
+          description: 'Available physical workspace seating options',
+          options: options.isNotEmpty ? options : _space.seatCategories.first.options,
+        ),
+      ];
+
+      setState(() {
+        _space = SpaceInfo(
+          id: data['id'].toString(),
+          name: data['name'] ?? _space.name,
+          subtitle: '${data['address'] ?? ''}, ${data['city'] ?? ''}',
+          imageUrl: imageUrl,
+          rating: 4.9,
+          reviews: 120,
+          startingPrice: startingPrice,
+          priceLabel: '/ day',
+          description: data['description'] ?? _space.description,
+          amenities: mappedAmenities,
+          badge: data['badge'] ?? _space.badge,
+          showSchedulePicker: false,
+          seatCategories: categories,
+        );
+      });
+    }
+    setState(() => _isLoadingDetail = false);
   }
 
   @override
@@ -220,7 +311,7 @@ class _SpaceDetailScreenState extends State<SpaceDetailScreen>
                     Row(
                       children: [
                         Text(
-                          '£${_space.startingPrice.toStringAsFixed(0)}',
+                          '₹${_space.startingPrice.toStringAsFixed(0)}',
                           style: GoogleFonts.inter(
                             fontSize: 24,
                             fontWeight: FontWeight.w700,
@@ -407,7 +498,7 @@ class _SpaceDetailScreenState extends State<SpaceDetailScreen>
                       ),
                     ),
                     Text(
-                      'from £${cat.options.isNotEmpty ? cat.options.reduce((a, b) => a.price < b.price ? a : b).price.toStringAsFixed(0) : '-'}',
+                      'from ₹${cat.options.isNotEmpty ? cat.options.reduce((a, b) => a.price < b.price ? a : b).price.toStringAsFixed(0) : '-'}',
                       style: GoogleFonts.inter(
                         fontSize: 13,
                         fontWeight: FontWeight.w600,
