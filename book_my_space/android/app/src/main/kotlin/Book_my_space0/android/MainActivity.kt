@@ -1,4 +1,4 @@
-package com.bookmyspace.book_my_space
+package Book_my_space0.android
 
 import io.flutter.embedding.android.FlutterActivity
 

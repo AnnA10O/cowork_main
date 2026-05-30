@@ -722,6 +722,22 @@ class _OptionCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isOccupied = option.status == 'occupied';
+    
+    // Calculate a stable, deterministic remaining time for occupied spaces
+    final int hash = option.id.hashCode.abs();
+    final int minutes = (hash % 6 + 1) * 30; // 30, 60, 90, 120, 150, 180 mins
+    final String freeInText;
+    if (minutes < 60) {
+      freeInText = 'Free in $minutes mins';
+    } else {
+      final double hours = minutes / 60;
+      if (hours == hours.toInt()) {
+        freeInText = 'Free in ${hours.toInt()} ${hours.toInt() == 1 ? 'hr' : 'hrs'}';
+      } else {
+        freeInText = 'Free in ${hours.toStringAsFixed(1)} hrs';
+      }
+    }
+
     return GestureDetector(
       onTap: isOccupied ? null : onTap,
       child: AnimatedContainer(
@@ -816,19 +832,33 @@ class _OptionCard extends StatelessWidget {
                         ),
                         child: Center(
                           child: Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+                            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
                             decoration: BoxDecoration(
                               color: AppColors.occupied.withOpacity(0.85),
                               borderRadius: BorderRadius.circular(8),
                             ),
-                            child: Text(
-                              'OCCUPIED',
-                              style: GoogleFonts.inter(
-                                fontSize: 12,
-                                fontWeight: FontWeight.w800,
-                                color: Colors.white,
-                                letterSpacing: 1.2,
-                              ),
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Text(
+                                  'OCCUPIED',
+                                  style: GoogleFonts.inter(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w800,
+                                    color: Colors.white,
+                                    letterSpacing: 1.2,
+                                  ),
+                                ),
+                                const SizedBox(height: 2),
+                                Text(
+                                  freeInText,
+                                  style: GoogleFonts.inter(
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.w600,
+                                    color: Colors.white.withOpacity(0.9),
+                                  ),
+                                ),
+                              ],
                             ),
                           ),
                         ),

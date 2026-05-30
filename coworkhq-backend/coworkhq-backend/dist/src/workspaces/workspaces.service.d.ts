@@ -13,11 +13,19 @@ export declare class WorkspacesService {
             _count: {
                 desks: number;
             };
+            workingHours: {
+                id: string;
+                day: import(".prisma/client").$Enums.DayOfWeek;
+                workspaceId: string;
+                openTime: string;
+                closeTime: string;
+                isClosed: boolean;
+            }[];
             images: {
                 id: string;
                 createdAt: Date;
-                order: number;
                 workspaceId: string;
+                order: number;
                 url: string;
             }[];
             pricingPlans: {
@@ -30,14 +38,6 @@ export declare class WorkspacesService {
                 type: import(".prisma/client").$Enums.PricingType;
                 basePrice: import("@prisma/client/runtime/library").Decimal;
                 currency: string;
-            }[];
-            workingHours: {
-                id: string;
-                day: import(".prisma/client").$Enums.DayOfWeek;
-                workspaceId: string;
-                openTime: string;
-                closeTime: string;
-                isClosed: boolean;
             }[];
         } & {
             id: string;
@@ -87,19 +87,27 @@ export declare class WorkspacesService {
             comment: string | null;
             isPublic: boolean;
         })[];
+        workingHours: {
+            id: string;
+            day: import(".prisma/client").$Enums.DayOfWeek;
+            workspaceId: string;
+            openTime: string;
+            closeTime: string;
+            isClosed: boolean;
+        }[];
         images: {
             id: string;
             createdAt: Date;
-            order: number;
             workspaceId: string;
+            order: number;
             url: string;
         }[];
         desks: {
             id: string;
             isActive: boolean;
             createdAt: Date;
-            description: string | null;
             workspaceId: string;
+            description: string | null;
             type: string;
             deskNumber: string;
             premiumExtra: import("@prisma/client/runtime/library").Decimal;
@@ -114,14 +122,6 @@ export declare class WorkspacesService {
             type: import(".prisma/client").$Enums.PricingType;
             basePrice: import("@prisma/client/runtime/library").Decimal;
             currency: string;
-        }[];
-        workingHours: {
-            id: string;
-            day: import(".prisma/client").$Enums.DayOfWeek;
-            workspaceId: string;
-            openTime: string;
-            closeTime: string;
-            isClosed: boolean;
         }[];
     } & {
         id: string;
@@ -207,8 +207,8 @@ export declare class WorkspacesService {
     addImage(managerId: string, workspaceId: string, imageUrl: string, order: number): Promise<{
         id: string;
         createdAt: Date;
-        order: number;
         workspaceId: string;
+        order: number;
         url: string;
     }>;
     removeImage(managerId: string, imageId: string): Promise<{
@@ -218,8 +218,8 @@ export declare class WorkspacesService {
         id: string;
         isActive: boolean;
         createdAt: Date;
-        description: string | null;
         workspaceId: string;
+        description: string | null;
         type: string;
         deskNumber: string;
         premiumExtra: import("@prisma/client/runtime/library").Decimal;
@@ -228,8 +228,8 @@ export declare class WorkspacesService {
         id: string;
         isActive: boolean;
         createdAt: Date;
-        description: string | null;
         workspaceId: string;
+        description: string | null;
         type: string;
         deskNumber: string;
         premiumExtra: import("@prisma/client/runtime/library").Decimal;
@@ -240,8 +240,8 @@ export declare class WorkspacesService {
             id: string;
             createdAt: Date;
             updatedAt: Date;
-            status: import(".prisma/client").$Enums.BookingStatus;
             workspaceId: string;
+            status: import(".prisma/client").$Enums.BookingStatus;
             premiumExtra: import("@prisma/client/runtime/library").Decimal;
             customerId: string;
             deskId: string;
@@ -263,8 +263,8 @@ export declare class WorkspacesService {
         id: string;
         isActive: boolean;
         createdAt: Date;
-        description: string | null;
         workspaceId: string;
+        description: string | null;
         type: string;
         deskNumber: string;
         premiumExtra: import("@prisma/client/runtime/library").Decimal;
@@ -300,17 +300,17 @@ export declare class WorkspacesService {
         discountPercent: import("@prisma/client/runtime/library").Decimal | null;
         discountFlat: import("@prisma/client/runtime/library").Decimal | null;
         maxUses: number;
-        usedCount: number;
         validFrom: Date;
         validUntil: Date;
+        usedCount: number;
     }>;
     generateQrCode(managerId: string, workspaceId: string, deskId?: string): Promise<{
         id: string;
         isActive: boolean;
         createdAt: Date;
         workspaceId: string;
-        deskId: string | null;
         code: string;
+        deskId: string | null;
     }>;
     generateStaffCode(managerId: string, _dto?: GenerateStaffCodeDto): Promise<{
         id: string;
@@ -338,8 +338,8 @@ export declare class WorkspacesService {
         updatedAt: Date;
         userId: string;
         managerId: string;
-        workspaceId: string | null;
         staffCodeId: string;
+        workspaceId: string | null;
     })[]>;
     getManagerDashboard(managerId: string): Promise<{
         workspaces: number;

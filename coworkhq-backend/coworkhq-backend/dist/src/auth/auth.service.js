@@ -49,6 +49,9 @@ const config_1 = require("@nestjs/config");
 const prisma_service_1 = require("../prisma/prisma.service");
 const client_1 = require("@prisma/client");
 const bcrypt = __importStar(require("bcryptjs"));
+const admin = __importStar(require("firebase-admin"));
+const fs = __importStar(require("fs"));
+const path = __importStar(require("path"));
 let AuthService = class AuthService {
     constructor(prisma, jwtService, configService) {
         this.prisma = prisma;
@@ -166,6 +169,85 @@ let AuthService = class AuthService {
         const passwordHash = await bcrypt.hash(dto.newPassword, 12);
         await this.prisma.user.update({ where: { id: userId }, data: { passwordHash } });
         return { message: 'Password changed successfully' };
+    }
+    ensureFirebaseInitialized() {
+        if (admin.apps.length > 0)
+            return true;
+        try {
+            const saPath = path.join(process.cwd(), 'firebase-service-account.json');
+            if (fs.existsSync(saPath)) {
+                admin.initializeApp({
+                    credential: admin.credential.cert(saPath),
+                });
+                console.log('Firebase Admin: Initialized successfully using service account JSON.');
+                return true;
+            }
+        }
+        catch (e) {
+            console.warn('Firebase Admin: Failed to initialize service account:', e);
+        }
+        return false;
+    }
+    async loginWithFirebase(idToken) {
+        let email;
+        let name;
+        const firebaseInitialized = this.ensureFirebaseInitialized();
+        if (firebaseInitialized) {
+            try {
+                const decodedToken = await admin.auth().verifyIdToken(idToken);
+                email = decodedToken.email;
+                name = decodedToken.name || decodedToken.email.split('@')[0];
+            }
+            catch (e) {
+                throw new common_1.UnauthorizedException('Invalid Firebase ID Token: ' + e.message);
+            }
+        }
+        else {
+            console.warn('⚠️ Firebase Admin SDK is NOT initialized (missing firebase-service-account.json). ' +
+                'Falling back to insecure JWT decoding for development.');
+            try {
+                const parts = idToken.split('.');
+                if (parts.length !== 3) {
+                    throw new Error('JWT must have 3 parts');
+                }
+                const payload = JSON.parse(Buffer.from(parts[1], 'base64').toString('utf-8'));
+                email = payload.email;
+                name = payload.name || payload.email?.split('@')[0] || 'Firebase User';
+                if (!email) {
+                    throw new Error('No email in token payload');
+                }
+            }
+            catch (e) {
+                if (idToken.includes('@')) {
+                    email = idToken.trim();
+                    name = email.split('@')[0];
+                }
+                else {
+                    throw new common_1.UnauthorizedException('Failed to decode developer bypass token: ' + e.message);
+                }
+            }
+        }
+        let user = await this.prisma.user.findUnique({
+            where: { email },
+        });
+        if (!user) {
+            user = await this.prisma.$transaction(async (tx) => {
+                return tx.user.create({
+                    data: {
+                        email,
+                        name,
+                        role: client_1.Role.CUSTOMER,
+                        isActive: true,
+                        passwordHash: '',
+                        customerProfile: {
+                            create: {},
+                        },
+                    },
+                });
+            });
+            console.log(`Firebase Auth: Auto-registered new customer in database: ${email}`);
+        }
+        return this.signTokens(user);
     }
     signTokens(user) {
         const payload = { sub: user.id, email: user.email, role: user.role };

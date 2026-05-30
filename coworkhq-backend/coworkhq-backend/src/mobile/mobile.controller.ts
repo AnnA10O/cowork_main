@@ -38,6 +38,12 @@ export class MobileController {
   }
 
   @Public()
+  @Post('auth/firebase')
+  loginWithFirebase(@Body('idToken') idToken: string) {
+    return this.mobileService.loginWithFirebase(idToken);
+  }
+
+  @Public()
   @Post('auth/refresh')
   refresh(@Body() dto: RefreshTokenDto) {
     return this.mobileService.refreshToken(dto.refreshToken);

@@ -23,16 +23,6 @@ class ApiClient {
 
   static Future<void> init() async {
     try {
-      // Auto-detect Android Emulator disabled to allow physical device port forwarding (adb reverse)
-      /*
-      if (!kIsWeb && Platform.isAndroid) {
-        if (baseUrl.contains('localhost')) {
-          baseUrl = baseUrl.replaceAll('localhost', '10.0.2.2');
-          dev.log('API: Auto-mapped localhost to 10.0.2.2 for Android: $baseUrl');
-        }
-      }
-      */
-
       final prefs = await SharedPreferences.getInstance();
       _authToken = prefs.getString('auth_token');
       final userStr = prefs.getString('current_user');
@@ -40,6 +30,28 @@ class ApiClient {
         _currentUser = jsonDecode(userStr);
       }
       dev.log('API: Initialized auth token: $_authToken');
+
+      // Smart auto-detect local network configuration on Android
+      if (!kIsWeb && Platform.isAndroid && baseUrl.contains('localhost')) {
+        dev.log('API: Testing local server connectivity on $baseUrl...');
+        try {
+          // Probe localhost (with a short timeout to prevent blocking app startup)
+          final testUri = Uri.parse('$baseUrl/mobile/workspaces');
+          final response = await http.get(testUri).timeout(const Duration(milliseconds: 600));
+          dev.log('API: Localhost server resolved successfully! Keeping baseUrl: $baseUrl');
+        } catch (e) {
+          dev.log('API: Localhost unreachable on Android ($e). Checking Emulator loopback...');
+          final emulatorUrl = baseUrl.replaceAll('localhost', '10.0.2.2');
+          try {
+            final testUri = Uri.parse('$emulatorUrl/mobile/workspaces');
+            final response = await http.get(testUri).timeout(const Duration(milliseconds: 600));
+            baseUrl = emulatorUrl;
+            dev.log('API: Emulator detected! Automatically mapped baseUrl to: $baseUrl');
+          } catch (e2) {
+            dev.log('API WARNING: Both localhost and emulator loopback are unreachable. If using a physical Android device, please execute "adb reverse tcp:3000 tcp:3000" in your terminal to forward port 3000, or check your server configuration.');
+          }
+        }
+      }
     } catch (e) {
       dev.log('API Error (init): $e');
     }
@@ -76,6 +88,40 @@ class ApiClient {
       }
     } catch (e) {
       dev.log('API Error (login): $e', error: e);
+    }
+    return null;
+  }
+
+  static Future<Map<String, dynamic>?> loginWithFirebase({
+    required String idToken,
+  }) async {
+    try {
+      final uri = Uri.parse('$baseUrl/mobile/auth/firebase');
+      dev.log('API: Logging in with Firebase to: $uri');
+      final response = await http.post(
+        uri,
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({'idToken': idToken}),
+      ).timeout(const Duration(seconds: 5));
+
+      if (response.statusCode == 201 || response.statusCode == 200) {
+        final body = jsonDecode(response.body);
+        final data = body['data'] ?? body;
+        final token = data['accessToken'];
+        final user = data['user'];
+        if (token != null) {
+          _authToken = token;
+          _currentUser = user != null ? Map<String, dynamic>.from(user) : null;
+          final prefs = await SharedPreferences.getInstance();
+          await prefs.setString('auth_token', token);
+          if (user != null) {
+            await prefs.setString('current_user', jsonEncode(user));
+          }
+          return Map<String, dynamic>.from(data);
+        }
+      }
+    } catch (e) {
+      dev.log('API Error (loginWithFirebase): $e', error: e);
     }
     return null;
   }

@@ -46,6 +46,9 @@ let MobileController = class MobileController {
     login(dto) {
         return this.mobileService.login(dto);
     }
+    loginWithFirebase(idToken) {
+        return this.mobileService.loginWithFirebase(idToken);
+    }
     refresh(dto) {
         return this.mobileService.refreshToken(dto.refreshToken);
     }
@@ -103,6 +106,14 @@ __decorate([
     __metadata("design:paramtypes", [auth_dto_1.LoginDto]),
     __metadata("design:returntype", void 0)
 ], MobileController.prototype, "login", null);
+__decorate([
+    (0, decorators_1.Public)(),
+    (0, common_1.Post)('auth/firebase'),
+    __param(0, (0, common_1.Body)('idToken')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String]),
+    __metadata("design:returntype", void 0)
+], MobileController.prototype, "loginWithFirebase", null);
 __decorate([
     (0, decorators_1.Public)(),
     (0, common_1.Post)('auth/refresh'),

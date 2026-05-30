@@ -1,0 +1,39 @@
+{
+  "project_info": {
+    "project_number": "864036256863",
+    "project_id": "bookmyspace2025",
+    "storage_bucket": "bookmyspace2025.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:864036256863:android:eb6e996bdaa4f8a969efea",
+        "android_client_info": {
+          "package_name": "Book_my_space0.android"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "864036256863-taa2tii2dbmqgkirho1s744qrnr22rv0.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAQ1-EJUOpQ0W8l5VJdQ5o2FhybKCfigVQ"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "864036256863-taa2tii2dbmqgkirho1s744qrnr22rv0.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

@@ -46,5 +46,15 @@ export declare class AuthService {
     changePassword(userId: string, dto: ChangePasswordDto): Promise<{
         message: string;
     }>;
+    private ensureFirebaseInitialized;
+    loginWithFirebase(idToken: string): Promise<{
+        accessToken: string;
+        refreshToken: string;
+        user: {
+            id: string;
+            email: string;
+            role: string;
+        };
+    }>;
     private signTokens;
 }

@@ -27,6 +27,15 @@ export declare class MobileController {
             role: string;
         };
     }>;
+    loginWithFirebase(idToken: string): Promise<{
+        accessToken: string;
+        refreshToken: string;
+        user: {
+            id: string;
+            email: string;
+            role: string;
+        };
+    }>;
     refresh(dto: RefreshTokenDto): Promise<{
         accessToken: string;
         refreshToken: string;
@@ -45,11 +54,19 @@ export declare class MobileController {
             _count: {
                 desks: number;
             };
+            workingHours: {
+                id: string;
+                day: import(".prisma/client").$Enums.DayOfWeek;
+                workspaceId: string;
+                openTime: string;
+                closeTime: string;
+                isClosed: boolean;
+            }[];
             images: {
                 id: string;
                 createdAt: Date;
-                order: number;
                 workspaceId: string;
+                order: number;
                 url: string;
             }[];
             pricingPlans: {
@@ -62,14 +79,6 @@ export declare class MobileController {
                 type: import(".prisma/client").$Enums.PricingType;
                 basePrice: import("@prisma/client/runtime/library").Decimal;
                 currency: string;
-            }[];
-            workingHours: {
-                id: string;
-                day: import(".prisma/client").$Enums.DayOfWeek;
-                workspaceId: string;
-                openTime: string;
-                closeTime: string;
-                isClosed: boolean;
             }[];
         } & {
             id: string;
@@ -119,19 +128,27 @@ export declare class MobileController {
             comment: string | null;
             isPublic: boolean;
         })[];
+        workingHours: {
+            id: string;
+            day: import(".prisma/client").$Enums.DayOfWeek;
+            workspaceId: string;
+            openTime: string;
+            closeTime: string;
+            isClosed: boolean;
+        }[];
         images: {
             id: string;
             createdAt: Date;
-            order: number;
             workspaceId: string;
+            order: number;
             url: string;
         }[];
         desks: {
             id: string;
             isActive: boolean;
             createdAt: Date;
-            description: string | null;
             workspaceId: string;
+            description: string | null;
             type: string;
             deskNumber: string;
             premiumExtra: import("@prisma/client/runtime/library").Decimal;
@@ -146,14 +163,6 @@ export declare class MobileController {
             type: import(".prisma/client").$Enums.PricingType;
             basePrice: import("@prisma/client/runtime/library").Decimal;
             currency: string;
-        }[];
-        workingHours: {
-            id: string;
-            day: import(".prisma/client").$Enums.DayOfWeek;
-            workspaceId: string;
-            openTime: string;
-            closeTime: string;
-            isClosed: boolean;
         }[];
     } & {
         id: string;
@@ -179,8 +188,8 @@ export declare class MobileController {
             id: string;
             createdAt: Date;
             updatedAt: Date;
-            status: import(".prisma/client").$Enums.BookingStatus;
             workspaceId: string;
+            status: import(".prisma/client").$Enums.BookingStatus;
             premiumExtra: import("@prisma/client/runtime/library").Decimal;
             customerId: string;
             deskId: string;
@@ -202,8 +211,8 @@ export declare class MobileController {
         id: string;
         isActive: boolean;
         createdAt: Date;
-        description: string | null;
         workspaceId: string;
+        description: string | null;
         type: string;
         deskNumber: string;
         premiumExtra: import("@prisma/client/runtime/library").Decimal;
@@ -220,8 +229,8 @@ export declare class MobileController {
         id: string;
         createdAt: Date;
         updatedAt: Date;
-        status: import(".prisma/client").$Enums.BookingStatus;
         workspaceId: string;
+        status: import(".prisma/client").$Enums.BookingStatus;
         premiumExtra: import("@prisma/client/runtime/library").Decimal;
         customerId: string;
         deskId: string;
@@ -246,6 +255,10 @@ export declare class MobileController {
             address: string;
             city: string;
         };
+        desk: {
+            type: string;
+            deskNumber: string;
+        };
         pricingPlan: {
             id: string;
             name: string;
@@ -256,10 +269,6 @@ export declare class MobileController {
             type: import(".prisma/client").$Enums.PricingType;
             basePrice: import("@prisma/client/runtime/library").Decimal;
             currency: string;
-        };
-        desk: {
-            type: string;
-            deskNumber: string;
         };
         payment: {
             status: import(".prisma/client").$Enums.PaymentStatus;
@@ -277,8 +286,8 @@ export declare class MobileController {
         id: string;
         createdAt: Date;
         updatedAt: Date;
-        status: import(".prisma/client").$Enums.BookingStatus;
         workspaceId: string;
+        status: import(".prisma/client").$Enums.BookingStatus;
         premiumExtra: import("@prisma/client/runtime/library").Decimal;
         customerId: string;
         deskId: string;
@@ -298,22 +307,6 @@ export declare class MobileController {
         originalBookingId: string | null;
     })[]>;
     getOneBooking(user: any, id: string): Promise<{
-        workspace: {
-            name: string;
-            managerId: string;
-            address: string;
-        };
-        pricingPlan: {
-            id: string;
-            name: string;
-            isActive: boolean;
-            createdAt: Date;
-            updatedAt: Date;
-            workspaceId: string;
-            type: import(".prisma/client").$Enums.PricingType;
-            basePrice: import("@prisma/client/runtime/library").Decimal;
-            currency: string;
-        };
         customer: {
             user: {
                 id: string;
@@ -330,15 +323,31 @@ export declare class MobileController {
             referredBy: string | null;
             preferredLang: string;
         };
+        workspace: {
+            name: string;
+            managerId: string;
+            address: string;
+        };
         desk: {
             id: string;
             isActive: boolean;
             createdAt: Date;
-            description: string | null;
             workspaceId: string;
+            description: string | null;
             type: string;
             deskNumber: string;
             premiumExtra: import("@prisma/client/runtime/library").Decimal;
+        };
+        pricingPlan: {
+            id: string;
+            name: string;
+            isActive: boolean;
+            createdAt: Date;
+            updatedAt: Date;
+            workspaceId: string;
+            type: import(".prisma/client").$Enums.PricingType;
+            basePrice: import("@prisma/client/runtime/library").Decimal;
+            currency: string;
         };
         payment: {
             id: string;
@@ -368,8 +377,8 @@ export declare class MobileController {
         id: string;
         createdAt: Date;
         updatedAt: Date;
-        status: import(".prisma/client").$Enums.BookingStatus;
         workspaceId: string;
+        status: import(".prisma/client").$Enums.BookingStatus;
         premiumExtra: import("@prisma/client/runtime/library").Decimal;
         customerId: string;
         deskId: string;
@@ -407,8 +416,8 @@ export declare class MobileController {
             id: string;
             createdAt: Date;
             updatedAt: Date;
-            status: import(".prisma/client").$Enums.BookingStatus;
             workspaceId: string;
+            status: import(".prisma/client").$Enums.BookingStatus;
             premiumExtra: import("@prisma/client/runtime/library").Decimal;
             customerId: string;
             deskId: string;

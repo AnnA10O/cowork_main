@@ -7,11 +7,6 @@ export declare class StaffService {
         email: string;
         name: string;
         staffProfile: {
-            workspace: {
-                id: string;
-                name: string;
-                address: string;
-            };
             manager: {
                 user: {
                     email: string;
@@ -30,6 +25,11 @@ export declare class StaffService {
                 totalPaid: import("@prisma/client/runtime/library").Decimal;
                 userId: string;
             };
+            workspace: {
+                id: string;
+                name: string;
+                address: string;
+            };
         } & {
             id: string;
             isActive: boolean;
@@ -37,8 +37,8 @@ export declare class StaffService {
             updatedAt: Date;
             userId: string;
             managerId: string;
-            workspaceId: string | null;
             staffCodeId: string;
+            workspaceId: string | null;
         };
     }>;
     getDashboard(staffId: string): Promise<{
@@ -46,16 +46,6 @@ export declare class StaffService {
         resolvedToday: number;
     }>;
     getAssignedWorkspace(staffId: string): Promise<{
-        desks: {
-            id: string;
-            isActive: boolean;
-            createdAt: Date;
-            description: string | null;
-            workspaceId: string;
-            type: string;
-            deskNumber: string;
-            premiumExtra: import("@prisma/client/runtime/library").Decimal;
-        }[];
         workingHours: {
             id: string;
             day: import(".prisma/client").$Enums.DayOfWeek;
@@ -63,6 +53,16 @@ export declare class StaffService {
             openTime: string;
             closeTime: string;
             isClosed: boolean;
+        }[];
+        desks: {
+            id: string;
+            isActive: boolean;
+            createdAt: Date;
+            workspaceId: string;
+            description: string | null;
+            type: string;
+            deskNumber: string;
+            premiumExtra: import("@prisma/client/runtime/library").Decimal;
         }[];
     } & {
         id: string;
@@ -91,11 +91,6 @@ export declare class StaffController {
         email: string;
         name: string;
         staffProfile: {
-            workspace: {
-                id: string;
-                name: string;
-                address: string;
-            };
             manager: {
                 user: {
                     email: string;
@@ -114,6 +109,11 @@ export declare class StaffController {
                 totalPaid: import("@prisma/client/runtime/library").Decimal;
                 userId: string;
             };
+            workspace: {
+                id: string;
+                name: string;
+                address: string;
+            };
         } & {
             id: string;
             isActive: boolean;
@@ -121,8 +121,8 @@ export declare class StaffController {
             updatedAt: Date;
             userId: string;
             managerId: string;
-            workspaceId: string | null;
             staffCodeId: string;
+            workspaceId: string | null;
         };
     }>;
     getDashboard(user: any): Promise<{
@@ -130,16 +130,6 @@ export declare class StaffController {
         resolvedToday: number;
     }>;
     getWorkspace(user: any): Promise<{
-        desks: {
-            id: string;
-            isActive: boolean;
-            createdAt: Date;
-            description: string | null;
-            workspaceId: string;
-            type: string;
-            deskNumber: string;
-            premiumExtra: import("@prisma/client/runtime/library").Decimal;
-        }[];
         workingHours: {
             id: string;
             day: import(".prisma/client").$Enums.DayOfWeek;
@@ -147,6 +137,16 @@ export declare class StaffController {
             openTime: string;
             closeTime: string;
             isClosed: boolean;
+        }[];
+        desks: {
+            id: string;
+            isActive: boolean;
+            createdAt: Date;
+            workspaceId: string;
+            description: string | null;
+            type: string;
+            deskNumber: string;
+            premiumExtra: import("@prisma/client/runtime/library").Decimal;
         }[];
     } & {
         id: string;

@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:go_router/go_router.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:google_sign_in/google_sign_in.dart';
 import '../../theme/app_colors.dart';
+import '../../data/api_client.dart';
 
 class ProfileScreen extends StatelessWidget {
   const ProfileScreen({super.key});
@@ -90,7 +93,17 @@ class ProfileScreen extends StatelessWidget {
             SizedBox(
               width: double.infinity,
               child: OutlinedButton.icon(
-                onPressed: () => context.go('/login'),
+                onPressed: () async {
+                  // Sign out from Firebase Auth
+                  await FirebaseAuth.instance.signOut();
+                  // Sign out from Google
+                  await GoogleSignIn().signOut();
+                  // Logout in ApiClient
+                  await ApiClient.logout();
+                  if (context.mounted) {
+                    context.go('/login');
+                  }
+                },
                 icon: const Icon(Icons.logout_rounded, size: 18),
                 label: Text(
                   'Sign Out',
@@ -115,6 +128,23 @@ class ProfileScreen extends StatelessWidget {
 class _ProfileHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
+    final user = ApiClient.currentUser;
+    final name = user?['name'] ?? 'Guest User';
+    final email = user?['email'] ?? 'guest@coworkhq.in';
+
+    // Calculate initials
+    String initials = 'G';
+    final nameParts = name.trim().split(RegExp(r'\s+'));
+    if (nameParts.isNotEmpty) {
+      if (nameParts.length > 1) {
+        initials = '${nameParts[0][0]}${nameParts[1][0]}'.toUpperCase();
+      } else if (nameParts[0].length > 1) {
+        initials = nameParts[0].substring(0, 2).toUpperCase();
+      } else if (nameParts[0].isNotEmpty) {
+        initials = nameParts[0][0].toUpperCase();
+      }
+    }
+
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
@@ -134,7 +164,7 @@ class _ProfileHeader extends StatelessWidget {
             ),
             child: Center(
               child: Text(
-                'AJ',
+                initials,
                 style: GoogleFonts.inter(
                   color: Colors.white,
                   fontWeight: FontWeight.w700,
@@ -150,12 +180,16 @@ class _ProfileHeader extends StatelessWidget {
               children: [
                 Row(
                   children: [
-                    Text(
-                      'Alex Johnson',
-                      style: GoogleFonts.inter(
-                        color: AppColors.onSurface,
-                        fontWeight: FontWeight.w700,
-                        fontSize: 18,
+                    Expanded(
+                      child: Text(
+                        name,
+                        style: GoogleFonts.inter(
+                          color: AppColors.onSurface,
+                          fontWeight: FontWeight.w700,
+                          fontSize: 18,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                       ),
                     ),
                     const SizedBox(width: 8),
@@ -182,11 +216,13 @@ class _ProfileHeader extends StatelessWidget {
                 ),
                 const SizedBox(height: 3),
                 Text(
-                  'alex@company.com',
+                  email,
                   style: GoogleFonts.inter(
                     color: AppColors.onSurfaceVariant,
                     fontSize: 13,
                   ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                 ),
                 const SizedBox(height: 5),
                 Row(
@@ -195,7 +231,7 @@ class _ProfileHeader extends StatelessWidget {
                         size: 11, color: AppColors.onSurfaceVariant),
                     const SizedBox(width: 4),
                     Text(
-                      'Member since Jan 2024',
+                      'Member since Jan 2026',
                       style: GoogleFonts.inter(
                         color: AppColors.onSurfaceVariant,
                         fontSize: 11,

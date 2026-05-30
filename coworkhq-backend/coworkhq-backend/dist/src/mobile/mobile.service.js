@@ -28,6 +28,9 @@ let MobileService = class MobileService {
     login(dto) {
         return this.authService.login(dto);
     }
+    loginWithFirebase(idToken) {
+        return this.authService.loginWithFirebase(idToken);
+    }
     refreshToken(token) {
         return this.authService.refreshToken(token);
     }

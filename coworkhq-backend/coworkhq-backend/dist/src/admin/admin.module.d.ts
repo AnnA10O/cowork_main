@@ -141,19 +141,19 @@ export declare class AdminService {
         id: string;
         createdAt: Date;
         managerId: string;
+        message: string;
         adminNote: string | null;
         isResolved: boolean;
         subject: string;
-        message: string;
     })[]>;
     respondFeedback(feedbackId: string, dto: AdminFeedbackResponseDto): Promise<{
         id: string;
         createdAt: Date;
         managerId: string;
+        message: string;
         adminNote: string | null;
         isResolved: boolean;
         subject: string;
-        message: string;
     }>;
     getPlatformFees(status?: string): Promise<({
         manager: {
@@ -321,19 +321,19 @@ export declare class AdminController {
         id: string;
         createdAt: Date;
         managerId: string;
+        message: string;
         adminNote: string | null;
         isResolved: boolean;
         subject: string;
-        message: string;
     })[]>;
     respondFeedback(id: string, dto: AdminFeedbackResponseDto): Promise<{
         id: string;
         createdAt: Date;
         managerId: string;
+        message: string;
         adminNote: string | null;
         isResolved: boolean;
         subject: string;
-        message: string;
     }>;
     getPlatformFees(status?: string): Promise<({
         manager: {
@@ -380,10 +380,10 @@ export declare class ManagerFeedbackController {
         id: string;
         createdAt: Date;
         managerId: string;
+        message: string;
         adminNote: string | null;
         isResolved: boolean;
         subject: string;
-        message: string;
     }, never, import("@prisma/client/runtime/library").DefaultArgs>;
 }
 export declare class AdminModule {

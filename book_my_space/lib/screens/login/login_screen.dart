@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:google_sign_in/google_sign_in.dart';
 import '../../theme/app_colors.dart';
 import '../../data/api_client.dart';
 
@@ -12,40 +14,72 @@ class LoginScreen extends StatefulWidget {
 }
 
 class _LoginScreenState extends State<LoginScreen> {
-  final _emailController = TextEditingController(text: 'customer@test.com');
-  final _passwordController = TextEditingController(text: 'Customer@123');
   bool _isLoading = false;
   String? _errorMessage;
 
   @override
   void dispose() {
-    _emailController.dispose();
-    _passwordController.dispose();
     super.dispose();
   }
 
-  Future<void> _handleLogin() async {
+  Future<void> _handleGoogleSignIn() async {
     setState(() {
       _isLoading = true;
       _errorMessage = null;
     });
 
-    final res = await ApiClient.login(
-      email: _emailController.text.trim(),
-      password: _passwordController.text.trim(),
-    );
+    try {
+      final GoogleSignIn googleSignIn = GoogleSignIn();
+      
+      // Trigger the interactive sign-in flow
+      final GoogleSignInAccount? googleUser = await googleSignIn.signIn();
+      
+      if (googleUser == null) {
+        // User cancelled the sign-in
+        setState(() {
+          _isLoading = false;
+        });
+        return;
+      }
 
-    if (!mounted) return;
+      // Obtain the auth details from the request
+      final GoogleSignInAuthentication googleAuth = await googleUser.authentication;
 
-    setState(() {
-      _isLoading = false;
-    });
+      // Create a new credential
+      final credential = GoogleAuthProvider.credential(
+        accessToken: googleAuth.accessToken,
+        idToken: googleAuth.idToken,
+      );
 
-    if (res != null) {
-      context.go('/home');
-    } else {
+      // Once signed in, return the UserCredential
+      final userCredential = await FirebaseAuth.instance.signInWithCredential(credential);
+      final idToken = await userCredential.user?.getIdToken();
+
+      if (idToken == null) {
+        throw 'Could not retrieve ID token from Google authentication.';
+      }
+
+      // Sync with our NestJS Backend
+      final res = await ApiClient.loginWithFirebase(idToken: idToken);
+
+      if (!mounted) return;
+
       setState(() {
-        _errorMessage = 'Invalid email or password. Please verify the backend is running.';
+        _isLoading = false;
+      });
+
+      if (res != null) {
+        context.go('/home');
+      } else {
+        setState(() {
+          _errorMessage = 'Successfully logged into Google, but server sync failed. Ensure NestJS is running.';
+        });
+      }
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _isLoading = false;
+        _errorMessage = 'Google Sign-In failed: $e';
       });
     }
   }
@@ -165,158 +199,44 @@ class _LoginScreenState extends State<LoginScreen> {
                         const SizedBox(height: 16),
                       ],
 
-                      // Email Field
-                      TextField(
-                        controller: _emailController,
-                        style: GoogleFonts.inter(color: Colors.white, fontSize: 14),
-                        decoration: InputDecoration(
-                          hintText: 'Email Address',
-                          hintStyle: GoogleFonts.inter(color: AppColors.onSurfaceVariant, fontSize: 14),
-                          filled: true,
-                          fillColor: AppColors.surfaceContainer,
-                          prefixIcon: const Icon(Icons.email_outlined, color: AppColors.onSurfaceVariant, size: 20),
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(8),
-                            borderSide: BorderSide.none,
-                          ),
-                          contentPadding: const EdgeInsets.symmetric(vertical: 14),
-                        ),
-                      ),
-                      const SizedBox(height: 12),
-
-                      // Password Field
-                      TextField(
-                        controller: _passwordController,
-                        obscureText: true,
-                        style: GoogleFonts.inter(color: Colors.white, fontSize: 14),
-                        decoration: InputDecoration(
-                          hintText: 'Password',
-                          hintStyle: GoogleFonts.inter(color: AppColors.onSurfaceVariant, fontSize: 14),
-                          filled: true,
-                          fillColor: AppColors.surfaceContainer,
-                          prefixIcon: const Icon(Icons.lock_outline, color: AppColors.onSurfaceVariant, size: 20),
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(8),
-                            borderSide: BorderSide.none,
-                          ),
-                          contentPadding: const EdgeInsets.symmetric(vertical: 14),
-                        ),
-                      ),
-                      const SizedBox(height: 20),
-
-                      // Login button
-                      SizedBox(
-                        width: double.infinity,
-                        height: 48,
-                        child: ElevatedButton(
-                          onPressed: _isLoading ? null : _handleLogin,
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: AppColors.primaryContainer,
-                            disabledBackgroundColor: AppColors.surfaceContainerHighest,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                          ),
-                          child: _isLoading
-                              ? const SizedBox(
-                                  width: 20,
-                                  height: 20,
-                                  child: CircularProgressIndicator(
-                                    strokeWidth: 2,
-                                    color: Colors.white,
-                                  ),
-                                )
-                              : Text(
-                                  'Continue',
-                                  style: GoogleFonts.inter(
-                                    fontSize: 15,
-                                    fontWeight: FontWeight.w600,
-                                    color: Colors.white,
-                                  ),
-                                ),
-                        ),
-                      ),
-                      const SizedBox(height: 20),
-
-                      // Divider
-                      Row(
-                        children: [
-                          Expanded(
-                            child: Divider(
-                              color: AppColors.outlineVariant.withOpacity(0.3),
-                            ),
-                          ),
-                          Padding(
-                            padding: const EdgeInsets.symmetric(horizontal: 12),
-                            child: Text(
-                              'OR',
-                              style: GoogleFonts.inter(
-                                fontSize: 10,
-                                fontWeight: FontWeight.w600,
-                                color: AppColors.outline,
-                                letterSpacing: 0.05,
-                              ),
-                            ),
-                          ),
-                          Expanded(
-                            child: Divider(
-                              color: AppColors.outlineVariant.withOpacity(0.3),
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 20),
-
-                      // Demo bypass button
+                      // Google Sign-In button
                       _SocialButton(
-                        onTap: () {
-                          // Clear any active JWT token to use local synthetic fallbacks
-                          ApiClient.logout();
-                          context.go('/home');
-                        },
+                        onTap: _isLoading ? () {} : _handleGoogleSignIn,
+                        color: Colors.white.withOpacity(0.04),
+                        border: true,
                         child: Row(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            const Icon(Icons.bolt, color: AppColors.primary, size: 22),
-                            const SizedBox(width: 12),
-                            Text(
-                              'Explore in Demo / Offline Mode',
-                              style: GoogleFonts.inter(
-                                fontSize: 14,
-                                fontWeight: FontWeight.w600,
-                                letterSpacing: 0.05,
-                                color: AppColors.onSurface,
+                            if (_isLoading)
+                              const SizedBox(
+                                width: 20,
+                                height: 20,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  color: Colors.white,
+                                ),
+                              )
+                            else ...[
+                              Image.network(
+                                'https://img.icons8.com/color/48/000000/google-logo.png',
+                                width: 20,
+                                height: 20,
+                                errorBuilder: (_, __, ___) => const Icon(Icons.g_mobiledata, color: Colors.white, size: 22),
                               ),
-                            ),
+                              const SizedBox(width: 12),
+                              Text(
+                                'Sign in with Google',
+                                style: GoogleFonts.inter(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w600,
+                                  color: AppColors.onSurface,
+                                ),
+                              ),
+                            ]
                           ],
                         ),
-                        color: Colors.transparent,
-                        border: true,
                       ),
                       const SizedBox(height: 32),
-
-                      // Footer links
-                      RichText(
-                        textAlign: TextAlign.center,
-                        text: TextSpan(
-                          style: GoogleFonts.inter(
-                            fontSize: 14,
-                            color: AppColors.onSurfaceVariant,
-                          ),
-                          children: [
-                            const TextSpan(text: "Don't have an account? "),
-                            TextSpan(
-                              text: 'Request Access',
-                              style: GoogleFonts.inter(
-                                fontSize: 14,
-                                fontWeight: FontWeight.w700,
-                                color: AppColors.primary,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(height: 24),
 
                       // Availability indicator
                       Container(

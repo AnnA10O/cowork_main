@@ -22,6 +22,10 @@ export class MobileService {
     return this.authService.login(dto);
   }
 
+  loginWithFirebase(idToken: string) {
+    return this.authService.loginWithFirebase(idToken);
+  }
+
   refreshToken(token: string) {
     return this.authService.refreshToken(token);
   }

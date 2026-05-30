@@ -17,9 +17,9 @@ export declare class IssuesService {
         id: string;
         createdAt: Date;
         updatedAt: Date;
+        workspaceId: string;
         description: string;
         status: import(".prisma/client").$Enums.IssueStatus;
-        workspaceId: string;
         deskId: string | null;
         reportedBy: string | null;
         resolvedAt: Date | null;
@@ -38,24 +38,24 @@ export declare class IssuesService {
                 updatedAt: Date;
                 userId: string;
                 managerId: string;
-                workspaceId: string | null;
                 staffCodeId: string;
+                workspaceId: string | null;
             };
         } & {
             id: string;
+            staffId: string;
             note: string | null;
+            issueId: string;
             resolvedAt: Date | null;
             assignedAt: Date;
-            issueId: string;
-            staffId: string;
         })[];
     } & {
         id: string;
         createdAt: Date;
         updatedAt: Date;
+        workspaceId: string;
         description: string;
         status: import(".prisma/client").$Enums.IssueStatus;
-        workspaceId: string;
         deskId: string | null;
         reportedBy: string | null;
         resolvedAt: Date | null;
@@ -69,9 +69,9 @@ export declare class IssuesService {
             id: string;
             createdAt: Date;
             updatedAt: Date;
+            workspaceId: string;
             description: string;
             status: import(".prisma/client").$Enums.IssueStatus;
-            workspaceId: string;
             deskId: string | null;
             reportedBy: string | null;
             resolvedAt: Date | null;
@@ -79,19 +79,19 @@ export declare class IssuesService {
         };
     } & {
         id: string;
+        staffId: string;
         note: string | null;
+        issueId: string;
         resolvedAt: Date | null;
         assignedAt: Date;
-        issueId: string;
-        staffId: string;
     })[]>;
     escalate(issueId: string, managerId: string): Promise<{
         id: string;
         createdAt: Date;
         updatedAt: Date;
+        workspaceId: string;
         description: string;
         status: import(".prisma/client").$Enums.IssueStatus;
-        workspaceId: string;
         deskId: string | null;
         reportedBy: string | null;
         resolvedAt: Date | null;
@@ -105,9 +105,9 @@ export declare class IssuesController {
         id: string;
         createdAt: Date;
         updatedAt: Date;
+        workspaceId: string;
         description: string;
         status: import(".prisma/client").$Enums.IssueStatus;
-        workspaceId: string;
         deskId: string | null;
         reportedBy: string | null;
         resolvedAt: Date | null;
@@ -126,24 +126,24 @@ export declare class IssuesController {
                 updatedAt: Date;
                 userId: string;
                 managerId: string;
-                workspaceId: string | null;
                 staffCodeId: string;
+                workspaceId: string | null;
             };
         } & {
             id: string;
+            staffId: string;
             note: string | null;
+            issueId: string;
             resolvedAt: Date | null;
             assignedAt: Date;
-            issueId: string;
-            staffId: string;
         })[];
     } & {
         id: string;
         createdAt: Date;
         updatedAt: Date;
+        workspaceId: string;
         description: string;
         status: import(".prisma/client").$Enums.IssueStatus;
-        workspaceId: string;
         deskId: string | null;
         reportedBy: string | null;
         resolvedAt: Date | null;
@@ -154,9 +154,9 @@ export declare class IssuesController {
             id: string;
             createdAt: Date;
             updatedAt: Date;
+            workspaceId: string;
             description: string;
             status: import(".prisma/client").$Enums.IssueStatus;
-            workspaceId: string;
             deskId: string | null;
             reportedBy: string | null;
             resolvedAt: Date | null;
@@ -164,11 +164,11 @@ export declare class IssuesController {
         };
     } & {
         id: string;
+        staffId: string;
         note: string | null;
+        issueId: string;
         resolvedAt: Date | null;
         assignedAt: Date;
-        issueId: string;
-        staffId: string;
     })[]>;
     resolve(user: any, id: string, dto: ResolveIssueDto): Promise<{
         message: string;
@@ -177,9 +177,9 @@ export declare class IssuesController {
         id: string;
         createdAt: Date;
         updatedAt: Date;
+        workspaceId: string;
         description: string;
         status: import(".prisma/client").$Enums.IssueStatus;
-        workspaceId: string;
         deskId: string | null;
         reportedBy: string | null;
         resolvedAt: Date | null;

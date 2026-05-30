@@ -30,8 +30,8 @@ export declare class BookingsController {
         id: string;
         createdAt: Date;
         updatedAt: Date;
-        status: import(".prisma/client").$Enums.BookingStatus;
         workspaceId: string;
+        status: import(".prisma/client").$Enums.BookingStatus;
         premiumExtra: import("@prisma/client/runtime/library").Decimal;
         customerId: string;
         deskId: string;
@@ -56,6 +56,10 @@ export declare class BookingsController {
             address: string;
             city: string;
         };
+        desk: {
+            type: string;
+            deskNumber: string;
+        };
         pricingPlan: {
             id: string;
             name: string;
@@ -66,10 +70,6 @@ export declare class BookingsController {
             type: import(".prisma/client").$Enums.PricingType;
             basePrice: import("@prisma/client/runtime/library").Decimal;
             currency: string;
-        };
-        desk: {
-            type: string;
-            deskNumber: string;
         };
         payment: {
             status: import(".prisma/client").$Enums.PaymentStatus;
@@ -87,8 +87,8 @@ export declare class BookingsController {
         id: string;
         createdAt: Date;
         updatedAt: Date;
-        status: import(".prisma/client").$Enums.BookingStatus;
         workspaceId: string;
+        status: import(".prisma/client").$Enums.BookingStatus;
         premiumExtra: import("@prisma/client/runtime/library").Decimal;
         customerId: string;
         deskId: string;
@@ -108,17 +108,6 @@ export declare class BookingsController {
         originalBookingId: string | null;
     })[]>;
     getManagerBookings(user: any, status?: string): Promise<({
-        pricingPlan: {
-            id: string;
-            name: string;
-            isActive: boolean;
-            createdAt: Date;
-            updatedAt: Date;
-            workspaceId: string;
-            type: import(".prisma/client").$Enums.PricingType;
-            basePrice: import("@prisma/client/runtime/library").Decimal;
-            currency: string;
-        };
         customer: {
             user: {
                 email: string;
@@ -139,6 +128,17 @@ export declare class BookingsController {
             type: string;
             deskNumber: string;
         };
+        pricingPlan: {
+            id: string;
+            name: string;
+            isActive: boolean;
+            createdAt: Date;
+            updatedAt: Date;
+            workspaceId: string;
+            type: import(".prisma/client").$Enums.PricingType;
+            basePrice: import("@prisma/client/runtime/library").Decimal;
+            currency: string;
+        };
         payment: {
             id: string;
             createdAt: Date;
@@ -159,8 +159,8 @@ export declare class BookingsController {
         id: string;
         createdAt: Date;
         updatedAt: Date;
-        status: import(".prisma/client").$Enums.BookingStatus;
         workspaceId: string;
+        status: import(".prisma/client").$Enums.BookingStatus;
         premiumExtra: import("@prisma/client/runtime/library").Decimal;
         customerId: string;
         deskId: string;
@@ -180,22 +180,6 @@ export declare class BookingsController {
         originalBookingId: string | null;
     })[]>;
     getOne(user: any, id: string): Promise<{
-        workspace: {
-            name: string;
-            managerId: string;
-            address: string;
-        };
-        pricingPlan: {
-            id: string;
-            name: string;
-            isActive: boolean;
-            createdAt: Date;
-            updatedAt: Date;
-            workspaceId: string;
-            type: import(".prisma/client").$Enums.PricingType;
-            basePrice: import("@prisma/client/runtime/library").Decimal;
-            currency: string;
-        };
         customer: {
             user: {
                 id: string;
@@ -212,15 +196,31 @@ export declare class BookingsController {
             referredBy: string | null;
             preferredLang: string;
         };
+        workspace: {
+            name: string;
+            managerId: string;
+            address: string;
+        };
         desk: {
             id: string;
             isActive: boolean;
             createdAt: Date;
-            description: string | null;
             workspaceId: string;
+            description: string | null;
             type: string;
             deskNumber: string;
             premiumExtra: import("@prisma/client/runtime/library").Decimal;
+        };
+        pricingPlan: {
+            id: string;
+            name: string;
+            isActive: boolean;
+            createdAt: Date;
+            updatedAt: Date;
+            workspaceId: string;
+            type: import(".prisma/client").$Enums.PricingType;
+            basePrice: import("@prisma/client/runtime/library").Decimal;
+            currency: string;
         };
         payment: {
             id: string;
@@ -250,8 +250,8 @@ export declare class BookingsController {
         id: string;
         createdAt: Date;
         updatedAt: Date;
-        status: import(".prisma/client").$Enums.BookingStatus;
         workspaceId: string;
+        status: import(".prisma/client").$Enums.BookingStatus;
         premiumExtra: import("@prisma/client/runtime/library").Decimal;
         customerId: string;
         deskId: string;
@@ -274,8 +274,8 @@ export declare class BookingsController {
         id: string;
         createdAt: Date;
         updatedAt: Date;
-        status: import(".prisma/client").$Enums.BookingStatus;
         workspaceId: string;
+        status: import(".prisma/client").$Enums.BookingStatus;
         premiumExtra: import("@prisma/client/runtime/library").Decimal;
         customerId: string;
         deskId: string;
@@ -298,8 +298,8 @@ export declare class BookingsController {
         id: string;
         createdAt: Date;
         updatedAt: Date;
-        status: import(".prisma/client").$Enums.BookingStatus;
         workspaceId: string;
+        status: import(".prisma/client").$Enums.BookingStatus;
         premiumExtra: import("@prisma/client/runtime/library").Decimal;
         customerId: string;
         deskId: string;
@@ -337,8 +337,8 @@ export declare class BookingsController {
             id: string;
             createdAt: Date;
             updatedAt: Date;
-            status: import(".prisma/client").$Enums.BookingStatus;
             workspaceId: string;
+            status: import(".prisma/client").$Enums.BookingStatus;
             premiumExtra: import("@prisma/client/runtime/library").Decimal;
             customerId: string;
             deskId: string;
