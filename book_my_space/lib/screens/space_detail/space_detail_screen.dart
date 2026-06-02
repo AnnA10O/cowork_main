@@ -13,34 +13,79 @@ class SpaceDetailScreen extends StatefulWidget {
   State<SpaceDetailScreen> createState() => _SpaceDetailScreenState();
 }
 
+class SeatCategoryInfo {
+  final String label;
+  final IconData icon;
+  final String description;
+  SeatCategoryInfo(this.label, this.icon, this.description);
+}
+
+const Map<String, String> categoryDefaultImages = {
+  'hot_desk': 'https://images.unsplash.com/photo-1497366216548-37526070297c?w=1200&q=80',
+  'private_cabin': 'https://images.unsplash.com/photo-1531973576160-7125cd663d86?w=1200&q=80',
+  'meeting_room': 'https://images.unsplash.com/photo-1504384308090-c894fdcc538d?w=1200&q=80',
+  'shared_space': 'https://images.unsplash.com/photo-1497366754035-f200968a6e72?w=1200&q=80',
+  'event_hall': 'https://images.unsplash.com/photo-1582268611958-ebfd161ef9cf?w=1200&q=80',
+  'virtual_office': 'https://images.unsplash.com/photo-1553877522-43269d4ea984?w=1200&q=80',
+  'podcast_studio': 'https://images.unsplash.com/photo-1478737270239-2f02b77fc618?w=1200&q=80',
+  'training_room': 'https://images.unsplash.com/photo-1524178232363-1fb2b075b655?w=1200&q=80',
+};
+
 class _SpaceDetailScreenState extends State<SpaceDetailScreen>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
   bool _isFavorite = false;
-  late SpaceInfo _space;
-  bool _isLoadingDetail = false;
+  SpaceInfo? _space;
+  int _currentHeroPage = 0;
 
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
-    // Initialize immediately with local fallback
-    _space = WorkspaceDataService.getSpace(widget.spaceId);
     _loadLiveDetail();
   }
 
+  SeatCategoryInfo getCategoryInfo(String type) {
+    switch (type) {
+      case 'private_cabin':
+        return SeatCategoryInfo('Private Cabins', Icons.lock_outline, 'Fully enclosed private workspaces');
+      case 'meeting_room':
+        return SeatCategoryInfo('Meeting Rooms', Icons.meeting_room, 'Professional spaces for collaboration');
+      case 'shared_space':
+        return SeatCategoryInfo('Shared Spaces', Icons.groups_outlined, 'Collaborative open environments');
+      case 'event_hall':
+        return SeatCategoryInfo('Event Halls', Icons.event, 'Large spaces for events and gatherings');
+      case 'virtual_office':
+        return SeatCategoryInfo('Virtual Offices', Icons.business, 'Professional business address and support');
+      case 'podcast_studio':
+        return SeatCategoryInfo('Podcast Studios', Icons.mic, 'Acoustically treated audio recording rooms');
+      case 'training_room':
+        return SeatCategoryInfo('Training Rooms', Icons.school, 'Classroom style rooms for learning');
+      case 'hot_desk':
+      default:
+        return SeatCategoryInfo('Hot Desks', Icons.weekend, 'Flexible desks in shared open area');
+    }
+  }
+
   Future<void> _loadLiveDetail() async {
-    setState(() => _isLoadingDetail = true);
     final data = await ApiClient.fetchWorkspaceDetail(widget.spaceId);
     if (data != null) {
       final plans = data['pricingPlans'] as List?;
       final double startingPrice = (plans != null && plans.isNotEmpty) 
-          ? (plans[0]['basePrice'] as num).toDouble() 
+          ? double.tryParse(plans[0]['basePrice']?.toString() ?? '') ?? 199.0
           : 199.0;
+      
+      // Always use real uploaded images if available, regardless of useDefaultImages flag
       final images = data['images'] as List?;
-      final imageUrl = (images != null && images.isNotEmpty) 
-          ? images[0]['url'] 
-          : 'https://images.unsplash.com/photo-1497366216548-37526070297c?w=1200&q=80';
+      String imageUrl;
+      final mainImages = images?.where((img) => (img['order'] as int? ?? -99) >= 0).toList() ?? [];
+      if (mainImages.isNotEmpty) {
+        mainImages.sort((a, b) => (a['order'] as int).compareTo(b['order'] as int));
+        imageUrl = mainImages.map((img) => img['url'].toString()).join(';');
+      } else {
+        final type = data['type'] as String? ?? 'hot_desk';
+        imageUrl = categoryDefaultImages[type] ?? categoryDefaultImages['hot_desk']!;
+      }
 
       final amenitiesStrings = data['amenities'] as List?;
       final List<Map<String, dynamic>> mappedAmenities = [];
@@ -68,52 +113,83 @@ class _SpaceDetailScreenState extends State<SpaceDetailScreen>
       }
 
       final desks = data['desks'] as List?;
-      final List<SeatOption> options = [];
+      final Map<String, List<SeatOption>> groupedDesks = {};
+      final Map<String, int> categoryOrders = {
+        'hot_desk': -1,
+        'private_cabin': -2,
+        'meeting_room': -3,
+        'shared_space': -4,
+        'event_hall': -5,
+        'virtual_office': -6,
+        'podcast_studio': -7,
+        'training_room': -8
+      };
+
       if (desks != null) {
         for (final desk in desks) {
-          final premiumExtra = (desk['premiumExtra'] as num?)?.toDouble() ?? 0.0;
-          options.add(SeatOption(
+          final premiumExtra = double.tryParse(desk['premiumExtra']?.toString() ?? '') ?? 0.0;
+          final type = desk['type'] as String? ?? 'hot_desk';
+          
+          String optionImageUrl = categoryDefaultImages[type] ?? categoryDefaultImages['hot_desk']!;
+      // Use custom category image if uploaded (ignore useDefaultImages flag)
+      if (images != null) {
+            final targetOrder = categoryOrders[type] ?? 0;
+            dynamic matchedImg;
+            for (final img in images) {
+              if (img['order'] == targetOrder) {
+                matchedImg = img;
+                break;
+              }
+            }
+            if (matchedImg != null) {
+              optionImageUrl = matchedImg['url'].toString();
+            }
+          }
+
+          final opt = SeatOption(
             id: desk['id'].toString(),
             label: 'Desk ${desk['deskNumber']}',
             price: startingPrice + premiumExtra,
             status: desk['isActive'] == true ? 'available' : 'occupied',
             statusColor: desk['isActive'] == true ? AppColors.available : AppColors.occupied,
             perks: [desk['description'] ?? 'Workspace Desk'],
-            imageUrl: 'https://images.unsplash.com/photo-1497366216548-37526070297c?w=800&q=80',
-            seatType: desk['type'] ?? 'shared_desk',
-          ));
+            imageUrl: optionImageUrl,
+            seatType: type,
+          );
+          groupedDesks.putIfAbsent(type, () => []).add(opt);
         }
       }
 
-      final List<SeatCategory> categories = [
-        SeatCategory(
-          id: 'desks',
-          label: 'Desks Seating',
-          icon: Icons.desktop_windows,
-          description: 'Available physical workspace seating options',
-          options: options.isNotEmpty ? options : _space.seatCategories.first.options,
-        ),
-      ];
+      final List<SeatCategory> categories = [];
+      groupedDesks.forEach((type, options) {
+        final info = getCategoryInfo(type);
+        categories.add(SeatCategory(
+          id: type,
+          label: info.label,
+          icon: info.icon,
+          description: info.description,
+          options: options,
+        ));
+      });
 
       setState(() {
         _space = SpaceInfo(
           id: data['id'].toString(),
-          name: data['name'] ?? _space.name,
+          name: data['name'] ?? 'Workspace',
           subtitle: '${data['address'] ?? ''}, ${data['city'] ?? ''}',
           imageUrl: imageUrl,
           rating: 4.9,
           reviews: 120,
           startingPrice: startingPrice,
-          priceLabel: '/ day',
-          description: data['description'] ?? _space.description,
+          priceLabel: '/ hour',
+          description: data['description'] ?? 'Co-working workspace',
           amenities: mappedAmenities,
-          badge: data['badge'] ?? _space.badge,
+          badge: data['badge'] ?? 'PREMIUM',
           showSchedulePicker: false,
           seatCategories: categories,
         );
       });
     }
-    setState(() => _isLoadingDetail = false);
   }
 
   @override
@@ -124,6 +200,16 @@ class _SpaceDetailScreenState extends State<SpaceDetailScreen>
 
   @override
   Widget build(BuildContext context) {
+    if (_space == null) {
+      return Scaffold(
+        backgroundColor: AppColors.background,
+        body: const Center(
+          child: CircularProgressIndicator(
+            color: AppColors.primary,
+          ),
+        ),
+      );
+    }
     return Scaffold(
       backgroundColor: AppColors.background,
       body: Stack(
@@ -145,17 +231,66 @@ class _SpaceDetailScreenState extends State<SpaceDetailScreen>
   // Hero
   // ---------------------------------------------------------------------------
   Widget _buildHero() {
+    final space = _space!;
+    final images = space.imageUrl.split(';');
+    Widget imageWidget;
+    if (images.length > 1) {
+      imageWidget = Stack(
+        children: [
+          PageView.builder(
+            itemCount: images.length,
+            onPageChanged: (index) {
+              setState(() {
+                _currentHeroPage = index;
+              });
+            },
+            itemBuilder: (context, index) {
+              return Image.network(
+                images[index],
+                fit: BoxFit.cover,
+                errorBuilder: (_, __, ___) =>
+                    Container(color: AppColors.surfaceContainerHigh),
+              );
+            },
+          ),
+          Positioned(
+            bottom: 24,
+            right: 20,
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: List.generate(
+                images.length,
+                (index) => Container(
+                  width: 6,
+                  height: 6,
+                  margin: const EdgeInsets.symmetric(horizontal: 3),
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: _currentHeroPage == index
+                        ? AppColors.primary
+                        : Colors.white.withOpacity(0.4),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ],
+      );
+    } else {
+      imageWidget = Image.network(
+        images[0],
+        fit: BoxFit.cover,
+        errorBuilder: (_, __, ___) =>
+            Container(color: AppColors.surfaceContainerHigh),
+      );
+    }
+
     return SizedBox(
       height: 380,
       child: Stack(
         fit: StackFit.expand,
         children: [
-          Image.network(
-            _space.imageUrl,
-            fit: BoxFit.cover,
-            errorBuilder: (_, __, ___) =>
-                Container(color: AppColors.surfaceContainerHigh),
-          ),
+          imageWidget,
           Container(
             decoration: const BoxDecoration(
               gradient: LinearGradient(
@@ -206,7 +341,7 @@ class _SpaceDetailScreenState extends State<SpaceDetailScreen>
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                if (_space.badge != null) ...[
+                if (space.badge != null) ...[
                   Container(
                     padding:
                         const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
@@ -217,7 +352,7 @@ class _SpaceDetailScreenState extends State<SpaceDetailScreen>
                           Border.all(color: AppColors.primary.withOpacity(0.4)),
                     ),
                     child: Text(
-                      _space.badge!,
+                      space.badge!,
                       style: GoogleFonts.inter(
                         fontSize: 11,
                         fontWeight: FontWeight.w600,
@@ -229,7 +364,7 @@ class _SpaceDetailScreenState extends State<SpaceDetailScreen>
                   const SizedBox(height: 6),
                 ],
                 Text(
-                  _space.name,
+                  space.name,
                   style: GoogleFonts.inter(
                     fontSize: 30,
                     fontWeight: FontWeight.w700,
@@ -238,7 +373,7 @@ class _SpaceDetailScreenState extends State<SpaceDetailScreen>
                   ),
                 ),
                 Text(
-                  _space.subtitle,
+                  space.subtitle,
                   style: GoogleFonts.inter(
                     fontSize: 13,
                     color: AppColors.onSurfaceVariant,
@@ -251,7 +386,7 @@ class _SpaceDetailScreenState extends State<SpaceDetailScreen>
                         size: 16, color: AppColors.tertiary, fill: 1),
                     const SizedBox(width: 4),
                     Text(
-                      _space.rating.toString(),
+                      space.rating.toString(),
                       style: GoogleFonts.inter(
                         fontSize: 15,
                         fontWeight: FontWeight.w600,
@@ -260,7 +395,7 @@ class _SpaceDetailScreenState extends State<SpaceDetailScreen>
                     ),
                     const SizedBox(width: 4),
                     Text(
-                      '(${_space.reviews} reviews)',
+                      '(${space.reviews} reviews)',
                       style: GoogleFonts.inter(
                         fontSize: 13,
                         color: AppColors.onSurfaceVariant,
@@ -280,6 +415,7 @@ class _SpaceDetailScreenState extends State<SpaceDetailScreen>
   // Content
   // ---------------------------------------------------------------------------
   Widget _buildContent() {
+    final space = _space!;
     return Padding(
       padding: const EdgeInsets.fromLTRB(20, 4, 20, 0),
       child: Column(
@@ -311,7 +447,7 @@ class _SpaceDetailScreenState extends State<SpaceDetailScreen>
                     Row(
                       children: [
                         Text(
-                          '₹${_space.startingPrice.toStringAsFixed(0)}',
+                          '₹${space.startingPrice.toStringAsFixed(0)}',
                           style: GoogleFonts.inter(
                             fontSize: 24,
                             fontWeight: FontWeight.w700,
@@ -319,7 +455,7 @@ class _SpaceDetailScreenState extends State<SpaceDetailScreen>
                           ),
                         ),
                         Text(
-                          ' ${_space.priceLabel}',
+                          ' ${space.priceLabel}',
                           style: GoogleFonts.inter(
                             fontSize: 14,
                             color: AppColors.onSurfaceVariant,
@@ -390,7 +526,7 @@ class _SpaceDetailScreenState extends State<SpaceDetailScreen>
           ),
           const SizedBox(height: 8),
           Text(
-            _space.description,
+            space.description,
             style: GoogleFonts.inter(
               fontSize: 14,
               color: AppColors.onSurfaceVariant,
@@ -416,7 +552,7 @@ class _SpaceDetailScreenState extends State<SpaceDetailScreen>
             crossAxisSpacing: 12,
             mainAxisSpacing: 12,
             childAspectRatio: 3.2,
-            children: _space.amenities
+            children: space.amenities
                 .map<Widget>(
                   (a) => Container(
                     padding: const EdgeInsets.symmetric(
@@ -459,7 +595,15 @@ class _SpaceDetailScreenState extends State<SpaceDetailScreen>
             ),
           ),
           const SizedBox(height: 12),
-          ..._space.seatCategories.map(
+          if (space.seatCategories.isEmpty)
+            Text(
+              'No seating categories configured for this workspace yet.',
+              style: GoogleFonts.inter(
+                fontSize: 13,
+                color: AppColors.onSurfaceVariant,
+              ),
+            ),
+          ...space.seatCategories.map(
             (cat) => Padding(
               padding: const EdgeInsets.only(bottom: 10),
               child: Container(
@@ -519,6 +663,7 @@ class _SpaceDetailScreenState extends State<SpaceDetailScreen>
   // Bottom bar
   // ---------------------------------------------------------------------------
   Widget _buildBottomBar() {
+    final space = _space!;
     return Positioned(
       bottom: 0,
       left: 0,
@@ -539,10 +684,11 @@ class _SpaceDetailScreenState extends State<SpaceDetailScreen>
             children: [
               Expanded(
                 child: ElevatedButton(
-                  onPressed: () =>
+                  onPressed: space.seatCategories.isEmpty ? null : () =>
                       context.push('/seat-selection/${widget.spaceId}'),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppColors.primaryContainer,
+                    disabledBackgroundColor: AppColors.surfaceContainerHighest,
                     foregroundColor: Colors.white,
                     minimumSize: const Size.fromHeight(48),
                     shape: RoundedRectangleBorder(

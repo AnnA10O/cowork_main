@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:intl/intl.dart';
+import 'dart:developer' as dev;
 import '../../theme/app_colors.dart';
 import '../../data/api_client.dart';
 
@@ -14,25 +16,125 @@ class CheckoutScreen extends StatefulWidget {
 
 class _CheckoutScreenState extends State<CheckoutScreen> {
   int _selectedPayment = 0;
-  bool _loungeAccess = false;
-  bool _printingCredits = false;
-  bool _mealCombo = false;
+  List<Map<String, dynamic>> _extraServices = [];
+  Map<String, int> _selectedExtrasQuantities = {};
   bool _isProcessing = false;
   final _couponController = TextEditingController();
 
-  // Date & time selection
   DateTime _selectedDate = DateTime.now();
+  List<String> _selectedTimeSlots = [];
+  List<String> _timeSlots = [];
   String? _selectedTimeSlot;
-  late DateTime _calendarFocusMonth;
   
   String? _pricingPlanId;
+  bool _isLoadingPlans = true;
+  List<Map<String, dynamic>> _pricingPlans = [];
+  List<Map<String, dynamic>> _workingHours = [];
+  
+  final _hoursController = TextEditingController(text: '1');
+  int _hoursPerDay = 1;
+
+  @override
+  void initState() {
+    super.initState();
+    final dStr = widget.bookingData['selectedDate'] as String?;
+    if (dStr != null) {
+      _selectedDate = DateTime.parse(dStr);
+    }
+    _generateTimeSlots();
+    
+    final slots = widget.bookingData['selectedTimeSlots'] as List<dynamic>?;
+    if (slots != null && slots.isNotEmpty) {
+      _selectedTimeSlots = slots.cast<String>().toList();
+      _selectedTimeSlot = _selectedTimeSlots.first;
+      _hoursPerDay = _selectedTimeSlots.length;
+      _hoursController.text = _hoursPerDay.toString();
+    } else {
+      final singleSlot = widget.bookingData['selectedTimeSlot'] as String?;
+      if (singleSlot != null) {
+        _selectedTimeSlot = singleSlot;
+        _selectedTimeSlots = [singleSlot];
+      }
+    }
+    _hoursController.addListener(() {
+      final val = int.tryParse(_hoursController.text) ?? 1;
+      setState(() => _hoursPerDay = val);
+    });
+    _loadPricingPlan();
+    _loadExtraServices();
+  }
+
+  void _generateTimeSlots() {
+    _timeSlots.clear();
+    final now = DateTime.now();
+    final isToday = _selectedDate.year == now.year &&
+        _selectedDate.month == now.month &&
+        _selectedDate.day == now.day;
+    
+    for (int hour = 8; hour <= 19; hour++) {
+      if (isToday && now.hour >= hour) {
+        continue;
+      }
+      final startStr = DateFormat('hh:mm a').format(DateTime(2022, 1, 1, hour, 0));
+      final endStr = DateFormat('hh:mm a').format(DateTime(2022, 1, 1, hour + 1, 0));
+      _timeSlots.add('$startStr - $endStr');
+    }
+  }
+
+  void _onTimeSlotSelected(String time) {
+    setState(() {
+      if (_selectedTimeSlots.contains(time)) {
+        _selectedTimeSlots.remove(time);
+      } else {
+        _selectedTimeSlots.add(time);
+      }
+      if (_selectedTimeSlots.isNotEmpty) {
+        _selectedTimeSlot = _selectedTimeSlots.first;
+      } else {
+        _selectedTimeSlot = null;
+      }
+    });
+  }
+
+  Future<void> _loadExtraServices() async {
+    final spaceId = widget.bookingData['spaceId']?.toString();
+    if (spaceId != null) {
+      final extras = await ApiClient.fetchExtraServices(spaceId);
+      if (extras != null && mounted) {
+        setState(() {
+          _extraServices = extras.where((e) => e['isActive'] == true).toList();
+          for (var e in _extraServices) {
+            _selectedExtrasQuantities[e['id']] = 0;
+          }
+        });
+      }
+    }
+  }
+
+  @override
+  void dispose() {
+    _couponController.dispose();
+    _hoursController.dispose();
+    super.dispose();
+  }
 
   double get _basePrice {
+    if (_pricingPlanId != null && _pricingPlans.isNotEmpty) {
+      final plan = _pricingPlans.firstWhere(
+        (p) => p['id']?.toString() == _pricingPlanId,
+        orElse: () => _pricingPlans.first,
+      );
+      final price = plan['basePrice'] ?? plan['price'];
+      if (price is double) return price;
+      if (price is int) return price.toDouble();
+      if (price is String) return double.tryParse(price) ?? 50.0;
+    }
+    
+    // Fallback to widget data
     final p = widget.bookingData['price'];
     if (p is double) return p;
     if (p is int) return p.toDouble();
     if (p is String) {
-      // strip '£', '$', whitespace
       final cleaned = p.replaceAll(RegExp(r'[£$\s]'), '');
       return double.tryParse(cleaned) ?? 50.0;
     }
@@ -41,15 +143,44 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
 
   double get _addonsTotal {
     double t = 0;
-    if (_loungeAccess) t += 15;
-    if (_printingCredits) t += 5;
-    if (_mealCombo) t += 22;
+    for (var e in _extraServices) {
+      final q = _selectedExtrasQuantities[e['id']] ?? 0;
+      if (q > 0) {
+        final p = e['price'];
+        if (p is double) t += (p * q);
+        if (p is int) t += (p.toDouble() * q);
+        if (p is String) t += ((double.tryParse(p) ?? 0) * q);
+      }
+    }
     return t;
   }
 
-  double get _tax => ((_basePrice + _addonsTotal) * 0.1).roundToDouble();
+  double get _tax => ((_calculatedPlanPrice + _addonsTotal) * 0.1).roundToDouble();
 
-  double get _total => _basePrice + _addonsTotal + _tax;
+  double get _calculatedPlanPrice {
+    double planPrice = _basePrice;
+    if (_pricingPlanId != null && _pricingPlans.isNotEmpty) {
+      final plan = _pricingPlans.firstWhere(
+        (p) => p['id']?.toString() == _pricingPlanId,
+        orElse: () => _pricingPlans.first,
+      );
+      final type = plan['type'];
+      
+      
+      if (type == 'HOURLY') {
+        if (_selectedTimeSlots.isNotEmpty) {
+          planPrice = _basePrice * _selectedTimeSlots.length;
+        } else {
+          planPrice = _basePrice * _hoursPerDay;
+        }
+      } else {
+        planPrice = _basePrice; // The basePrice for daily, weekly, monthly is already for that duration!
+      }
+    }
+    return planPrice;
+  }
+
+  double get _total => _calculatedPlanPrice + _addonsTotal + _tax;
 
   String get _spaceName =>
       widget.bookingData['spaceName'] as String? ?? 'Workspace';
@@ -72,12 +203,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
     return [];
   }
 
-  @override
-  void initState() {
-    super.initState();
-    _calendarFocusMonth = DateTime(_selectedDate.year, _selectedDate.month);
-    _loadPricingPlan();
-  }
+  // (InitState moved up)
 
   Future<void> _loadPricingPlan() async {
     final spaceId = widget.bookingData['spaceId']?.toString();
@@ -86,25 +212,33 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
       if (details != null) {
         final plans = details['pricingPlans'] as List?;
         if (plans != null && plans.isNotEmpty) {
-          final dailyPlan = plans.firstWhere(
-            (p) => p['type'] == 'DAILY',
-            orElse: () => plans[0],
-          );
-          if (mounted) {
-            setState(() {
-              _pricingPlanId = dailyPlan['id']?.toString();
-            });
+          final activePlans = plans.where((p) => p['isActive'] == true).cast<Map<String, dynamic>>().toList();
+          if (activePlans.isNotEmpty) {
+            final hourlyPlan = activePlans.firstWhere(
+              (p) => p['type'] == 'HOURLY',
+              orElse: () => activePlans[0],
+            );
+            if (mounted) {
+              setState(() {
+                _pricingPlans = activePlans;
+                _pricingPlanId = hourlyPlan['id']?.toString();
+                if (details['workingHours'] != null) {
+                  _workingHours = (details['workingHours'] as List).cast<Map<String, dynamic>>();
+                }
+              });
+            }
           }
         }
       }
     }
+    if (mounted) {
+      setState(() {
+        _isLoadingPlans = false;
+      });
+    }
   }
 
-  @override
-  void dispose() {
-    _couponController.dispose();
-    super.dispose();
-  }
+  // (Dispose moved up)
 
   Future<void> _onPayNow() async {
     final spaceId = widget.bookingData['spaceId']?.toString();
@@ -113,6 +247,48 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
 
     setState(() => _isProcessing = true);
     
+    if (_pricingPlanId != null && _pricingPlans.isNotEmpty) {
+      final plan = _pricingPlans.firstWhere(
+        (p) => p['id']?.toString() == _pricingPlanId,
+        orElse: () => _pricingPlans.first,
+      );
+      
+      if (plan['type'] == 'DAILY' && _hoursPerDay <= 1) {
+        setState(() => _isProcessing = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Daily plans require booking for more than 1 hour.')),
+        );
+        return;
+      }
+    }
+    
+    if (_pricingPlanId != null && _selectedTimeSlot != null && _pricingPlans.isNotEmpty) {
+      try {
+        final plan = _pricingPlans.firstWhere(
+          (p) => p['id']?.toString() == _pricingPlanId,
+          orElse: () => _pricingPlans.first,
+        );
+        if (plan['type'] == 'HOURLY') {
+          final format = DateFormat('hh:mm a');
+          final rawTime = _selectedTimeSlots.isNotEmpty ? _selectedTimeSlots.first : _selectedTimeSlot!;
+          final parsedTime = format.parse(rawTime.split(' - ').first);
+          final start = DateTime(_selectedDate.year, _selectedDate.month, _selectedDate.day, parsedTime.hour, parsedTime.minute);
+          final end = start.add(Duration(hours: _selectedTimeSlots.isNotEmpty ? _selectedTimeSlots.length : _hoursPerDay));
+          
+          // Operating hours: 9 AM to 6 PM
+          if (start.hour < 9 || end.hour > 18 || (end.hour == 18 && end.minute > 0) || start.hour >= 18) {
+            setState(() => _isProcessing = false);
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('Cannot exceed operating hours (09:00 AM - 06:00 PM).')),
+            );
+            return;
+          }
+        }
+      } catch (e) {
+        dev.log('Error checking operating hours: $e');
+      }
+    }
+
     // Show demo processing dialog
     showDialog(
       context: context,
@@ -129,31 +305,234 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
 
     Map<String, dynamic>? bookingResult;
 
-    if (token != null && spaceId != null && deskId != null && _pricingPlanId != null) {
-      final start = DateTime(_selectedDate.year, _selectedDate.month, _selectedDate.day, 9, 0);
-      final end = DateTime(_selectedDate.year, _selectedDate.month, _selectedDate.day, 18, 0);
+    if (token == null) {
+      if (mounted) {
+        Navigator.of(context).pop(); // close dialog
+        setState(() => _isProcessing = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Please log in to book a desk.')),
+        );
+      }
+      return;
+    }
+
+    if (_pricingPlanId == null) {
+      if (mounted) {
+        Navigator.of(context).pop();
+        setState(() => _isProcessing = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Please select a pricing plan.')),
+        );
+      }
+      return;
+    }
+
+    final planType = _pricingPlans.isNotEmpty 
+      ? _pricingPlans.firstWhere((p) => p['id']?.toString() == _pricingPlanId, orElse: () => _pricingPlans.first)['type'] 
+      : 'HOURLY';
+
+    if (planType != 'HOURLY' && _selectedTimeSlot == null) {
+      if (mounted) {
+        Navigator.of(context).pop();
+        setState(() => _isProcessing = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Please select a start time.')),
+        );
+      }
+      return;
+    }
+
+    if (spaceId != null && deskId != null) {
+      var start = DateTime(_selectedDate.year, _selectedDate.month, _selectedDate.day, 9, 0);
+      var end = DateTime(_selectedDate.year, _selectedDate.month, _selectedDate.day, 18, 0);
+      
+      if (_pricingPlans.isNotEmpty) {
+        final plan = _pricingPlans.firstWhere(
+          (p) => p['id']?.toString() == _pricingPlanId,
+          orElse: () => _pricingPlans.first,
+        );
+        
+        if (_selectedTimeSlots.isNotEmpty) {
+          try {
+            final format = DateFormat('hh:mm a');
+            final parsedTime = format.parse(_selectedTimeSlots.first.split(' - ').first);
+            start = DateTime(_selectedDate.year, _selectedDate.month, _selectedDate.day, parsedTime.hour, parsedTime.minute);
+          } catch (e) {
+            dev.log('Error parsing time slot: $e');
+          }
+        } else if (_selectedTimeSlot != null) {
+          try {
+            final format = DateFormat('hh:mm a');
+            final parsedTime = format.parse(_selectedTimeSlot!.split(' - ').first);
+            start = DateTime(_selectedDate.year, _selectedDate.month, _selectedDate.day, parsedTime.hour, parsedTime.minute);
+          } catch (e) {
+            dev.log('Error parsing time slot: $e');
+          }
+        }
+        
+        if (plan['type'] == 'HOURLY') {
+          end = start.add(Duration(hours: _selectedTimeSlots.isNotEmpty ? _selectedTimeSlots.length : _hoursPerDay));
+        } else {
+          // For non-hourly plans, if time is specified, use the hours per day for the end time, else default to full day.
+          if (_selectedTimeSlots.isNotEmpty || _selectedTimeSlot != null) {
+            end = start.add(Duration(hours: _selectedTimeSlots.isNotEmpty ? _selectedTimeSlots.length : _hoursPerDay));
+          } else {
+            end = DateTime(_selectedDate.year, _selectedDate.month, _selectedDate.day, 18, 0);
+          }
+        }
+      }
+      
+      String finalDeskId = deskId;
+      
+      try {
+        final seatTypeKey = widget.bookingData['seatTypeKey']?.toString() ?? 'hot_desk';
+        final availResults = await ApiClient.fetchDeskAvailability(
+          spaceId,
+          start.toIso8601String().substring(0, 10),
+          startTime: start.toUtc().toIso8601String(),
+          endTime: end.toUtc().toIso8601String()
+        );
+        
+        final spaceDetails = await ApiClient.fetchWorkspaceDetail(spaceId);
+        
+        if (availResults != null && spaceDetails != null) {
+          final desks = spaceDetails['desks'] as List?;
+          if (desks != null) {
+            final Map<String, bool> availabilityMap = {};
+            for (final res in availResults) {
+              final id = res['id']?.toString();
+              if (id != null) {
+                availabilityMap[id] = res['isAvailable'] == true;
+              }
+            }
+            
+            // Find a free desk matching the same type
+            String? availableDeskId;
+            for (final d in desks) {
+              if (d['type'] == seatTypeKey && d['isActive'] == true) {
+                final dId = d['id'].toString();
+                if (availabilityMap[dId] != false) {
+                  availableDeskId = dId;
+                  break;
+                }
+              }
+            }
+            
+            if (availableDeskId != null) {
+              finalDeskId = availableDeskId;
+            } else {
+              if (mounted) {
+                Navigator.of(context).pop();
+                setState(() => _isProcessing = false);
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('No desks available for the selected time.')),
+                );
+              }
+              return;
+            }
+          }
+        }
+      } catch (e) {
+        dev.log('Error selecting dynamic desk: $e');
+      }
+
       final startTimeStr = start.toUtc().toIso8601String();
       final endTimeStr = end.toUtc().toIso8601String();
       
+      final slots = _selectedTimeSlots.isNotEmpty ? _selectedTimeSlots : widget.bookingData['selectedTimeSlots'] as List<String>?;
+      List<String> bookedSlotsIso = [];
+      if (slots != null) {
+        for (final slot in slots) {
+          try {
+            final format = DateFormat('hh:mm a');
+            final parsedTime = format.parse(slot.split(' - ').first);
+            final sDate = DateTime(_selectedDate.year, _selectedDate.month, _selectedDate.day, parsedTime.hour, parsedTime.minute);
+            bookedSlotsIso.add(sDate.toUtc().toIso8601String());
+          } catch (_) {}
+        }
+      }
+      
+      final List<Map<String, dynamic>> extrasList = [];
+      _selectedExtrasQuantities.forEach((id, q) {
+        if (q > 0) extrasList.add({'extraServiceId': id, 'quantity': q});
+      });
+
       bookingResult = await ApiClient.createBooking(
         workspaceId: spaceId,
-        deskId: deskId,
+        deskId: finalDeskId,
         pricingPlanId: _pricingPlanId!,
         startTime: startTimeStr,
         endTime: endTimeStr,
+        bookedSlots: bookedSlotsIso.isNotEmpty ? bookedSlotsIso : null,
+        extras: extrasList.isNotEmpty ? extrasList : null,
         authToken: token,
       );
     }
 
-    // Simulate processing delay
-    await Future.delayed(const Duration(milliseconds: 1800));
     if (!mounted) return;
     Navigator.of(context).pop(); // close dialog
     setState(() => _isProcessing = false);
 
-    final ref = bookingResult != null
-        ? (bookingResult['id']?.toString().substring(0, 8).toUpperCase() ?? 'BMS-LIVE')
-        : 'BMS-${DateTime.now().millisecondsSinceEpoch % 10000}';
+    if (bookingResult == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Booking failed. Please try again later.')),
+      );
+      return;
+    }
+
+    final ref = bookingResult['id']?.toString().substring(0, 8).toUpperCase() ?? 'BMS-LIVE';
+    String startStr = '09:00 AM';
+    String endStr = '06:00 PM';
+    String finalDateStr = DateFormat('MMM d, yyyy').format(_selectedDate);
+    String finalTimeStr = '$startStr - $endStr';
+    
+    String ticketPlanType = 'HOURLY';
+    if (_pricingPlans.isNotEmpty && _pricingPlanId != null) {
+      final plan = _pricingPlans.firstWhere((p) => p['id']?.toString() == _pricingPlanId, orElse: () => _pricingPlans.first);
+      ticketPlanType = plan['type'];
+    }
+    
+    if (_selectedTimeSlots.isNotEmpty || _selectedTimeSlot != null) {
+      try {
+        if (_selectedTimeSlots.length > 1) {
+           final firstPart = _selectedTimeSlots.first.split(' - ').first;
+           final lastPart = _selectedTimeSlots.last.split(' - ').last;
+           finalTimeStr = '$firstPart - $lastPart (${_selectedTimeSlots.length} hrs)';
+        } else {
+          final format = DateFormat('hh:mm a');
+          final rawTime = _selectedTimeSlots.isNotEmpty ? _selectedTimeSlots.first : _selectedTimeSlot!;
+          final parsedTime = format.parse(rawTime.split(' - ').first);
+          final start = DateTime(_selectedDate.year, _selectedDate.month, _selectedDate.day, parsedTime.hour, parsedTime.minute);
+          DateTime end = start.add(Duration(hours: _hoursPerDay));
+
+          startStr = DateFormat('hh:mm a').format(start);
+          endStr = DateFormat('hh:mm a').format(end);
+          finalTimeStr = '$startStr - $endStr';
+        }
+      } catch (e) {
+        dev.log('Error parsing time slot for eticket: $e');
+      }
+    } else {
+      if (ticketPlanType == 'HOURLY') {
+        final start = DateTime(_selectedDate.year, _selectedDate.month, _selectedDate.day, 9, 0);
+        final end = start.add(Duration(hours: _hoursPerDay));
+        startStr = DateFormat('hh:mm a').format(start);
+        endStr = DateFormat('hh:mm a').format(end);
+        finalTimeStr = '$startStr - $endStr';
+      }
+    }
+    
+    if (ticketPlanType == 'DAILY') {
+      finalTimeStr = 'Full Day Pass';
+    } else if (ticketPlanType == 'WEEKLY') {
+      finalTimeStr = 'Weekly Pass';
+      final endDate = _selectedDate.add(const Duration(days: 6));
+      finalDateStr = '${DateFormat('MMM d').format(_selectedDate)} - ${DateFormat('MMM d, yyyy').format(endDate)}';
+    } else if (ticketPlanType == 'MONTHLY') {
+      finalTimeStr = 'Monthly Pass';
+      final endDate = _selectedDate.add(const Duration(days: 29));
+      finalDateStr = '${DateFormat('MMM d').format(_selectedDate)} - ${DateFormat('MMM d, yyyy').format(endDate)}';
+    }
 
     context.push('/confirmation', extra: {
       'spaceName': _spaceName,
@@ -161,8 +540,8 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
       'seatType': _seatLabel,
       'ref': ref,
       'totalAmount': _total,
-      'startTime': '09:00 AM',
-      'endTime': '06:00 PM',
+      'date': finalDateStr,
+      'startTime': finalTimeStr,
     });
   }
 
@@ -179,8 +558,17 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  _buildDateTimeSection(),
-                  const SizedBox(height: 24),
+                  if (_pricingPlans.isNotEmpty) ...[
+                    // Always show the new time slots grid instead of just for non-hourly plans
+                    _buildTimeSlotsGrid(),
+                    const SizedBox(height: 24),
+                    if (_pricingPlans.firstWhere((p) => p['id']?.toString() == _pricingPlanId, orElse: () => _pricingPlans.first)['type'] != 'HOURLY') ...[
+                      _buildDurationSection(),
+                      const SizedBox(height: 24),
+                    ],
+                  ],
+                  _buildPricingPlanSelector(),
+                  const SizedBox(height: 12),
                   _buildSummaryCard(),
                   const SizedBox(height: 24),
                   _buildAddons(),
@@ -252,12 +640,9 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
   }
 
   // ---------------------------------------------------------------------------
-  // Date & Time selection
+  // Duration section
   // ---------------------------------------------------------------------------
-  Widget _buildDateTimeSection() {
-    final morningSlots = ['08:00 AM', '09:00 AM', '10:00 AM', '11:00 AM'];
-    final afternoonSlots = ['12:00 PM', '01:00 PM', '02:00 PM', '03:00 PM'];
-
+  Widget _buildDurationSection() {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -268,86 +653,8 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // ---- Section header ----
           Text(
-            'Select Date',
-            style: GoogleFonts.inter(
-              fontSize: 17,
-              fontWeight: FontWeight.w600,
-              color: AppColors.onSurface,
-            ),
-          ),
-          const SizedBox(height: 12),
-
-          // ---- Month navigation ----
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              GestureDetector(
-                onTap: () => setState(() {
-                  _calendarFocusMonth = DateTime(
-                      _calendarFocusMonth.year, _calendarFocusMonth.month - 1);
-                }),
-                child: const Icon(Icons.chevron_left,
-                    color: AppColors.onSurfaceVariant),
-              ),
-              Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-                decoration: BoxDecoration(
-                  color: AppColors.primaryContainer,
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                child: Text(
-                  '${_monthName(_calendarFocusMonth.month).toUpperCase()} ${_calendarFocusMonth.year}',
-                  style: GoogleFonts.inter(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w700,
-                    color: Colors.white,
-                  ),
-                ),
-              ),
-              GestureDetector(
-                onTap: () => setState(() {
-                  _calendarFocusMonth = DateTime(
-                      _calendarFocusMonth.year, _calendarFocusMonth.month + 1);
-                }),
-                child: const Icon(Icons.chevron_right,
-                    color: AppColors.onSurfaceVariant),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-
-          // ---- Day-of-week headers ----
-          Row(
-            children: ['MO', 'TU', 'WE', 'TH', 'FR', 'SA', 'SU']
-                .map(
-                  (d) => Expanded(
-                    child: Center(
-                      child: Text(
-                        d,
-                        style: GoogleFonts.inter(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w600,
-                          color: AppColors.onSurfaceVariant,
-                        ),
-                      ),
-                    ),
-                  ),
-                )
-                .toList(),
-          ),
-          const SizedBox(height: 6),
-
-          // ---- Calendar grid ----
-          _buildCalendarGrid(),
-
-          const SizedBox(height: 20),
-
-          // ---- Available Time Slots ----
-          Text(
-            'Available Time Slots',
+            'Duration',
             style: GoogleFonts.inter(
               fontSize: 17,
               fontWeight: FontWeight.w600,
@@ -355,155 +662,252 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
             ),
           ),
           const SizedBox(height: 10),
-
-          // Morning sessions
           Text(
-            'MORNING SESSIONS',
+            'How many hours per day will you use the workspace?',
             style: GoogleFonts.inter(
-              fontSize: 10,
-              fontWeight: FontWeight.w600,
-              letterSpacing: 0.06,
-              color: AppColors.outline,
+              fontSize: 12,
+              color: AppColors.onSurfaceVariant,
             ),
           ),
-          const SizedBox(height: 8),
-          _buildTimeSlotRow(morningSlots),
           const SizedBox(height: 12),
+          Container(
+            decoration: BoxDecoration(
+              color: AppColors.surfaceContainer,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: AppColors.outlineVariant.withOpacity(0.4)),
+            ),
+            child: Row(
+              children: [
+                IconButton(
+                  icon: const Icon(Icons.remove, color: AppColors.primary),
+                  onPressed: () {
+                    if (_hoursPerDay > 1) {
+                      _hoursController.text = (_hoursPerDay - 1).toString();
+                    }
+                  },
+                ),
+                Expanded(
+                  child: TextField(
+                    controller: _hoursController,
+                    textAlign: TextAlign.center,
+                    keyboardType: TextInputType.number,
+                    style: GoogleFonts.inter(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.onSurface,
+                    ),
+                    decoration: const InputDecoration(
+                      border: InputBorder.none,
+                    ),
+                  ),
+                ),
+                IconButton(
+                  icon: const Icon(Icons.add, color: AppColors.primary),
+                  onPressed: () {
+                    // Max hours validation
+                    int maxHours = 24;
+                    if (_workingHours.isNotEmpty) {
+                       final dayName = DateFormat('EEEE').format(_selectedDate).toUpperCase();
+                       final wh = _workingHours.firstWhere((w) => w['day'] == dayName, orElse: () => _workingHours.first);
+                       if (wh['openTime'] != null && wh['closeTime'] != null) {
+                          final oH = int.tryParse((wh['openTime'] as String).split(':')[0]) ?? 9;
+                          final cH = int.tryParse((wh['closeTime'] as String).split(':')[0]) ?? 18;
+                          maxHours = cH - oH;
+                       }
+                    }
+                    
+                    // Limit hours based on selected time slot too
+                    if (_selectedTimeSlot != null) {
+                      try {
+                        final format = DateFormat('hh:mm a');
+                        final parsedTime = format.parse(_selectedTimeSlot!);
+                        final slotHour = parsedTime.hour;
+                        int closingHour = 18;
+                        if (_workingHours.isNotEmpty) {
+                          final dayName = DateFormat('EEEE').format(_selectedDate).toUpperCase();
+                          final wh = _workingHours.firstWhere((w) => w['day'] == dayName, orElse: () => _workingHours.first);
+                          if (wh['closeTime'] != null) {
+                            closingHour = int.tryParse((wh['closeTime'] as String).split(':')[0]) ?? 18;
+                          }
+                        }
+                        final remainingHours = closingHour - slotHour;
+                        if (remainingHours < maxHours) {
+                          maxHours = remainingHours;
+                        }
+                      } catch (e) {
+                        dev.log('Error parsing time slot for validation: $e');
+                      }
+                    }
 
-          // Afternoon sessions
-          Text(
-            'AFTERNOON SESSIONS',
-            style: GoogleFonts.inter(
-              fontSize: 10,
-              fontWeight: FontWeight.w600,
-              letterSpacing: 0.06,
-              color: AppColors.outline,
+                    if (_hoursPerDay < maxHours) {
+                      _hoursController.text = (_hoursPerDay + 1).toString();
+                    } else {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('Cannot exceed operating hours for the selected start time.')),
+                      );
+                    }
+                  },
+                ),
+              ],
             ),
           ),
-          const SizedBox(height: 8),
-          _buildTimeSlotRow(afternoonSlots),
         ],
       ),
     );
   }
 
-  Widget _buildCalendarGrid() {
-    final firstDay =
-        DateTime(_calendarFocusMonth.year, _calendarFocusMonth.month, 1);
-    // Monday-based: Monday = 0
-    final startOffset = (firstDay.weekday - 1) % 7;
-    final daysInMonth =
-        DateTime(_calendarFocusMonth.year, _calendarFocusMonth.month + 1, 0)
-            .day;
-    final totalCells = startOffset + daysInMonth;
-    final rows = (totalCells / 7).ceil();
-    final today = DateTime.now();
-
-    return Column(
-      children: List.generate(rows, (row) {
-        return Row(
-          children: List.generate(7, (col) {
-            final cellIndex = row * 7 + col;
-            final dayNum = cellIndex - startOffset + 1;
-            if (dayNum < 1 || dayNum > daysInMonth) {
-              return const Expanded(child: SizedBox(height: 36));
-            }
-            final cellDate = DateTime(
-                _calendarFocusMonth.year, _calendarFocusMonth.month, dayNum);
-            final isSelected = cellDate.year == _selectedDate.year &&
-                cellDate.month == _selectedDate.month &&
-                cellDate.day == _selectedDate.day;
-            final isToday = cellDate.year == today.year &&
-                cellDate.month == today.month &&
-                cellDate.day == today.day;
-            final isPast = cellDate.isBefore(DateTime(today.year, today.month, today.day));
-
-            return Expanded(
-              child: GestureDetector(
-                onTap: isPast
-                    ? null
-                    : () => setState(() => _selectedDate = cellDate),
-                child: Container(
-                  margin: const EdgeInsets.all(2),
-                  height: 34,
-                  decoration: BoxDecoration(
-                    color: isSelected
-                        ? AppColors.primaryContainer
-                        : isToday
-                            ? AppColors.primaryContainer.withOpacity(0.15)
-                            : Colors.transparent,
-                    shape: BoxShape.circle,
-                  ),
-                  child: Center(
+  Widget _buildTimeSlotsGrid() {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.04),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: Colors.white.withOpacity(0.07)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Select Time Slots',
+            style: GoogleFonts.inter(
+              fontSize: 17,
+              fontWeight: FontWeight.w600,
+              color: AppColors.onSurface,
+            ),
+          ),
+          const SizedBox(height: 16),
+          if (_timeSlots.isNotEmpty)
+            Wrap(
+              spacing: 10,
+              runSpacing: 10,
+              children: _timeSlots.map((t) {
+                final isSelected = _selectedTimeSlots.contains(t);
+                return GestureDetector(
+                  onTap: () => _onTimeSlotSelected(t),
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 200),
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                    decoration: BoxDecoration(
+                      color: isSelected ? AppColors.primaryContainer : Colors.transparent,
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(
+                        color: isSelected ? AppColors.primary : AppColors.outlineVariant.withOpacity(0.5),
+                      ),
+                    ),
                     child: Text(
-                      '$dayNum',
+                      t,
                       style: GoogleFonts.inter(
                         fontSize: 13,
-                        fontWeight:
-                            isSelected || isToday ? FontWeight.w700 : FontWeight.w400,
-                        color: isSelected
-                            ? Colors.white
-                            : isPast
-                                ? AppColors.onSurfaceVariant.withOpacity(0.35)
-                                : AppColors.onSurface,
+                        fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
+                        color: isSelected ? AppColors.primary : AppColors.onSurfaceVariant,
                       ),
                     ),
                   ),
-                ),
-              ),
-            );
-          }),
-        );
-      }),
+                );
+              }).toList(),
+            )
+          else
+            Text(
+              'No slots available today',
+              style: GoogleFonts.inter(fontSize: 13, color: AppColors.error),
+            ),
+        ],
+      ),
     );
   }
 
-  Widget _buildTimeSlotRow(List<String> slots) {
-    return GridView.count(
-      crossAxisCount: 2,
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      mainAxisSpacing: 8,
-      crossAxisSpacing: 8,
-      childAspectRatio: 3.2,
-      children: slots.map((slot) {
-        final isSelected = _selectedTimeSlot == slot;
-        return GestureDetector(
-          onTap: () => setState(() => _selectedTimeSlot = slot),
-          child: Container(
-            decoration: BoxDecoration(
-              color: isSelected
-                  ? AppColors.primaryContainer
-                  : AppColors.surfaceContainer,
-              borderRadius: BorderRadius.circular(10),
-              border: isSelected
-                  ? null
-                  : Border.all(
-                      color: AppColors.outlineVariant.withOpacity(0.4)),
-            ),
-            child: Center(
-              child: Text(
-                slot,
-                style: GoogleFonts.inter(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w600,
-                  color: isSelected ? Colors.white : AppColors.onSurface,
+  Widget _buildPricingPlanSelector() {
+    if (_pricingPlans.isEmpty && !_isLoadingPlans) return const SizedBox();
+
+    final plansToDisplay = _isLoadingPlans 
+        ? [
+            {'id': 'dummy1', 'type': 'HOURLY', 'price': '199.0'},
+            {'id': 'dummy2', 'type': 'DAILY', 'price': '999.0'},
+          ] 
+        : _pricingPlans;
+
+    Widget content = Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Select Pricing Plan',
+          style: GoogleFonts.inter(
+            fontSize: 17,
+            fontWeight: FontWeight.w600,
+            color: AppColors.onSurface,
+          ),
+        ),
+        const SizedBox(height: 12),
+        SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          child: Row(
+            children: plansToDisplay.map((plan) {
+              final isSelected = _pricingPlanId == plan['id']?.toString();
+              return GestureDetector(
+                onTap: _isLoadingPlans ? null : () => setState(() => _pricingPlanId = plan['id']?.toString()),
+                child: Container(
+                  margin: const EdgeInsets.only(right: 12),
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  decoration: BoxDecoration(
+                    color: isSelected ? AppColors.primaryContainer : AppColors.surfaceContainer,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color: isSelected ? AppColors.primary : AppColors.outlineVariant.withOpacity(0.4),
+                      width: isSelected ? 2 : 1,
+                    ),
+                  ),
+                  child: Column(
+                    children: [
+                      Text(
+                        plan['type']?.toString().toUpperCase() ?? 'PLAN',
+                        style: GoogleFonts.inter(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w700,
+                          color: isSelected ? Colors.white : AppColors.onSurface,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        'INR ${plan['basePrice'] ?? plan['price']}',
+                        style: GoogleFonts.inter(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                          color: isSelected ? Colors.white : AppColors.primary,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
-              ),
+              );
+            }).toList(),
+          ),
+        ),
+      ],
+    );
+
+    if (_isLoadingPlans) {
+      return Stack(
+        children: [
+          ColorFiltered(
+            colorFilter: ColorFilter.mode(
+              AppColors.background.withOpacity(0.6),
+              BlendMode.srcATop,
+            ),
+            child: content,
+          ),
+          Positioned.fill(
+            child: Center(
+              child: const CircularProgressIndicator(strokeWidth: 3),
             ),
           ),
-        );
-      }).toList(),
-    );
+        ],
+      );
+    }
+
+    return content;
   }
 
-  String _monthName(int month) {
-    const names = [
-      '', 'January', 'February', 'March', 'April', 'May', 'June',
-      'July', 'August', 'September', 'October', 'November', 'December'
-    ];
-    return names[month];
-  }
+
 
   // ---------------------------------------------------------------------------
   // Summary card
@@ -598,7 +1002,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                         size: 13, color: AppColors.onSurfaceVariant),
                     const SizedBox(width: 4),
                     Text(
-                      'Today • Full Day',
+                      '${DateFormat('MMM dd, yyyy').format(_selectedDate)} • ${_selectedTimeSlot ?? 'All Day'}',
                       style: GoogleFonts.inter(
                         fontSize: 12,
                         color: AppColors.onSurfaceVariant,
@@ -618,6 +1022,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
   // Add-ons
   // ---------------------------------------------------------------------------
   Widget _buildAddons() {
+    if (_extraServices.isEmpty) return const SizedBox.shrink();
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -630,30 +1035,26 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
           ),
         ),
         const SizedBox(height: 12),
-        _AddOnTile(
-          icon: Icons.coffee,
-          title: 'Lounge Access',
-          subtitle: 'Unlimited coffee & refreshments',
-          price: '+£15',
-          isEnabled: _loungeAccess,
-          onToggle: (v) => setState(() => _loungeAccess = v),
-        ),
-        _AddOnTile(
-          icon: Icons.print,
-          title: 'Printing Credits',
-          subtitle: '50 pages high-quality BW/Color',
-          price: '+£5',
-          isEnabled: _printingCredits,
-          onToggle: (v) => setState(() => _printingCredits = v),
-        ),
-        _AddOnTile(
-          icon: Icons.restaurant,
-          title: 'Meal Combo',
-          subtitle: 'Chef-curated lunch & healthy snacks',
-          price: '+£22',
-          isEnabled: _mealCombo,
-          onToggle: (v) => setState(() => _mealCombo = v),
-        ),
+        ..._extraServices.map((e) {
+          final p = e['price'];
+          double price = 0;
+          if (p is double) price = p;
+          if (p is int) price = p.toDouble();
+          if (p is String) price = double.tryParse(p) ?? 0;
+          
+          return _AddOnTile(
+            icon: Icons.star_border, // default icon
+            title: e['name'] ?? '',
+            subtitle: e['description'] ?? '',
+            price: '+£${price.toStringAsFixed(0)}',
+            isEnabled: (_selectedExtrasQuantities[e['id']] ?? 0) > 0,
+            onToggle: (v) {
+              setState(() {
+                _selectedExtrasQuantities[e['id']] = v ? 1 : 0;
+              });
+            },
+          );
+        }).toList(),
       ],
     );
   }
@@ -779,9 +1180,14 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
       child: Column(
         children: [
           _PriceLine('Base Price', '£${_basePrice.toStringAsFixed(2)}'),
-          if (_loungeAccess) _PriceLine('Lounge Access', '£15.00'),
-          if (_printingCredits) _PriceLine('Printing Credits', '£5.00'),
-          if (_mealCombo) _PriceLine('Meal Combo', '£22.00'),
+          ..._extraServices.where((e) => (_selectedExtrasQuantities[e['id']] ?? 0) > 0).map((e) {
+            final p = e['price'];
+            double price = 0;
+            if (p is double) price = p;
+            if (p is int) price = p.toDouble();
+            if (p is String) price = double.tryParse(p) ?? 0;
+            return _PriceLine(e['name'], '£${price.toStringAsFixed(2)}');
+          }).toList(),
           _PriceLine('Tax & Service (10%)', '£${_tax.toStringAsFixed(2)}'),
           Divider(
               color: AppColors.outlineVariant.withOpacity(0.3), height: 20),

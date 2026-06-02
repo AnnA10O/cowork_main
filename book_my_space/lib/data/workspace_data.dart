@@ -7,7 +7,7 @@ import 'package:flutter/material.dart';
 class SeatOption {
   final String id;
   final String label;
-  final double price; // per day
+  final double price; // per hour
   final String status; // 'available' | 'filling_fast' | 'occupied'
   final Color statusColor;
   final List<String> perks;
@@ -15,6 +15,8 @@ class SeatOption {
   // Seat type for filter chips — one of: 'shared_desk' | 'dedicated_desk' |
   // 'private_cabin' | 'team_space' | 'meeting_room'
   final String seatType;
+  final int availableCount;
+  final int totalCount;
 
   const SeatOption({
     required this.id,
@@ -24,10 +26,12 @@ class SeatOption {
     required this.statusColor,
     required this.perks,
     required this.imageUrl,
-    this.seatType = 'shared_desk',
+    required this.seatType,
+    this.availableCount = 0,
+    this.totalCount = 0,
   });
 
-  String get priceLabel => '₹${price.toStringAsFixed(0)}';
+  String get priceLabel => '₹${price.toInt()}';
 }
 
 // ---------------------------------------------------------------------------
@@ -511,6 +515,7 @@ class WorkspaceDataService {
           status: 'available',
           statusColor: AppColors.available,
           perks: ['WiFi', 'Power', 'Coffee'],
+          seatType: 'standard',
           imageUrl:
           'https://images.unsplash.com/photo-1497366216548-37526070297c?w=800&q=80',
         ),
@@ -521,6 +526,7 @@ class WorkspaceDataService {
           status: 'filling_fast',
           statusColor: AppColors.fillingFast,
           perks: ['WiFi', 'Shared Desk'],
+          seatType: 'standard',
           imageUrl:
           'https://images.unsplash.com/photo-1531973576160-7125cd663d86?w=800&q=80',
         ),
@@ -538,7 +544,7 @@ class WorkspaceDataService {
       rating: 4.9,
       reviews: 128,
       startingPrice: 40,
-      priceLabel: '/ day',
+      priceLabel: '/ hour',
       description:
       'FMCIII is a meticulously engineered workspace designed for the high-performing professional. Blending modern corporate reliability with an atmosphere of quiet luxury, this environment features sound-dampened meeting pods, ergonomic workstations, and panoramic views of the Mumbai skyline.',
       amenities: [
@@ -560,7 +566,7 @@ class WorkspaceDataService {
       rating: 4.9,
       reviews: 120,
       startingPrice: 180,
-      priceLabel: '/ day',
+      priceLabel: '/ hour',
       description:
       'Designed for high-performance teams, The Glass House offers a seamless blend of transparency and privacy. Situated on the 2nd floor of one of BKC\'s premier office towers, it provides sweeping views of the atrium while maintaining soundproof integrity for your most critical strategy sessions.',
       amenities: [

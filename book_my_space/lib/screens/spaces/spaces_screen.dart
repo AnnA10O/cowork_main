@@ -37,128 +37,16 @@ class _SpacesScreenState extends State<SpacesScreen> {
     setState(() => _isLoading = false);
   }
 
-  static const _allSpaces = [
-    {
-      'id': 'fmciii',
-      'name': 'FMCIII Executive Lounge',
-      'location': 'BKC, Mumbai',
-      'price': '₹3,500/day',
-      'rating': 4.9,
-      'status': AvailabilityStatus.available,
-      'image': 'https://images.unsplash.com/photo-1497366216548-37526070297c?w=800&q=80',
-      'type': 'hot_desk',
-    },
-    {
-      'id': 'hive_soho',
-      'name': 'Hive CP Studio',
-      'location': 'Connaught Place, Delhi',
-      'price': '₹950/hr',
-      'rating': 4.8,
-      'status': AvailabilityStatus.available,
-      'image': 'https://images.unsplash.com/photo-1497366754035-f200968a6e72?w=800&q=80',
-      'type': 'shared_space',
-    },
-    {
-      'id': 'the_deck',
-      'name': 'The Deck Co-Work',
-      'location': 'Koramangala, Bengaluru',
-      'price': '₹1,200/hr',
-      'rating': 4.9,
-      'status': AvailabilityStatus.fillingFast,
-      'image': 'https://images.unsplash.com/photo-1462826303086-329426d1aef5?w=800&q=80',
-      'type': 'hot_desk',
-    },
-    {
-      'id': 'atlas_labs',
-      'name': 'Atlas Labs Cabin',
-      'location': 'Whitefield, Bengaluru',
-      'price': '₹800/hr',
-      'rating': 4.7,
-      'status': AvailabilityStatus.available,
-      'image': 'https://images.unsplash.com/photo-1531973576160-7125cd663d86?w=800&q=80',
-      'type': 'private_cabin',
-    },
-    {
-      'id': 'vault_prime',
-      'name': 'Vault Prime Suite',
-      'location': 'Nariman Point, Mumbai',
-      'price': '₹2,000/hr',
-      'rating': 5.0,
-      'status': AvailabilityStatus.occupied,
-      'image': 'https://images.unsplash.com/photo-1560179707-f14e90ef3623?w=800&q=80',
-      'type': 'private_cabin',
-    },
-    {
-      'id': 'glass_house',
-      'name': 'The Glass House',
-      'location': 'HSR Layout, Bengaluru',
-      'price': '₹19,000/day',
-      'rating': 4.9,
-      'status': AvailabilityStatus.available,
-      'image': 'https://images.unsplash.com/photo-1504384308090-c894fdcc538d?w=800&q=80',
-      'type': 'meeting_room',
-    },
-    {
-      'id': 'founders_hall',
-      'name': 'Founders Hall',
-      'location': 'Banjara Hills, Hyderabad',
-      'price': '₹28,000/day',
-      'rating': 4.8,
-      'status': AvailabilityStatus.available,
-      'image': 'https://images.unsplash.com/photo-1582268611958-ebfd161ef9cf?w=800&q=80',
-      'type': 'event_hall',
-    },
-    {
-      'id': 'grand_auditorium',
-      'name': 'Grand Auditorium',
-      'location': 'Indiranagar, Bengaluru',
-      'price': '₹65,000/day',
-      'rating': 4.9,
-      'status': AvailabilityStatus.available,
-      'image': 'https://images.unsplash.com/photo-1540575467063-178a50c2df87?w=800&q=80',
-      'type': 'event_hall',
-    },
-    {
-      'id': 'echo_pod',
-      'name': 'Echo Recording Pod',
-      'location': 'Navi Mumbai',
-      'price': '₹1,600/hr',
-      'rating': 4.8,
-      'status': AvailabilityStatus.available,
-      'image': 'https://images.unsplash.com/photo-1478737270239-2f02b77fc618?w=800&q=80',
-      'type': 'podcast_studio',
-    },
-    {
-      'id': 'campus_room',
-      'name': 'Campus Training Room',
-      'location': 'Sector 44, Gurgaon',
-      'price': '₹6,500/half-day',
-      'rating': 4.6,
-      'status': AvailabilityStatus.fillingFast,
-      'image': 'https://images.unsplash.com/photo-1524178232363-1fb2b075b655?w=800&q=80',
-      'type': 'training_room',
-    },
-    {
-      'id': 'nexus_virtual',
-      'name': 'Nexus Virtual Office',
-      'location': 'Andheri, Mumbai',
-      'price': '₹2,000/month',
-      'rating': 4.7,
-      'status': AvailabilityStatus.available,
-      'image': 'https://images.unsplash.com/photo-1553877522-43269d4ea984?w=800&q=80',
-      'type': 'virtual_office',
-    },
-    {
-      'id': 'bloom_shared',
-      'name': 'Bloom Shared Floor',
-      'location': 'Koramangala, Bengaluru',
-      'price': '₹650/hr',
-      'rating': 4.5,
-      'status': AvailabilityStatus.available,
-      'image': 'https://images.unsplash.com/photo-1497366811353-6870744d04b2?w=800&q=80',
-      'type': 'shared_space',
-    },
-  ];
+  static const Map<String, String> categoryDefaultImages = {
+    'hot_desk': 'https://images.unsplash.com/photo-1497366216548-37526070297c?w=800&q=80',
+    'private_cabin': 'https://images.unsplash.com/photo-1531973576160-7125cd663d86?w=800&q=80',
+    'meeting_room': 'https://images.unsplash.com/photo-1504384308090-c894fdcc538d?w=800&q=80',
+    'shared_space': 'https://images.unsplash.com/photo-1497366754035-f200968a6e72?w=800&q=80',
+    'event_hall': 'https://images.unsplash.com/photo-1582268611958-ebfd161ef9cf?w=800&q=80',
+    'virtual_office': 'https://images.unsplash.com/photo-1553877522-43269d4ea984?w=800&q=80',
+    'podcast_studio': 'https://images.unsplash.com/photo-1478737270239-2f02b77fc618?w=800&q=80',
+    'training_room': 'https://images.unsplash.com/photo-1524178232363-1fb2b075b655?w=800&q=80',
+  };
 
   static const _typeLabels = {
     'hot_desk': 'Hot Desks',
@@ -176,23 +64,37 @@ class _SpacesScreenState extends State<SpacesScreen> {
     final mappedApi = _apiSpaces.map((item) {
       final plans = item['pricingPlans'] as List?;
       final firstPlanPrice = (plans != null && plans.isNotEmpty) ? plans[0]['basePrice'] : 199;
+      
       final images = item['images'] as List?;
-      final imageUrl = (images != null && images.isNotEmpty) 
-          ? images[0]['url'] 
-          : 'https://images.unsplash.com/photo-1497366216548-37526070297c?w=800&q=80';
+      String imageUrl;
+      if (images != null && images.any((img) => (img['order'] as int) >= 0)) {
+        final mainImages = images.where((img) => (img['order'] as int) >= 0).toList();
+        dynamic coverImg;
+        for (final img in mainImages) {
+          if (img['order'] == 0) {
+            coverImg = img;
+            break;
+          }
+        }
+        imageUrl = coverImg != null ? coverImg['url'].toString() : mainImages[0]['url'].toString();
+      } else {
+        final type = item['type'] as String? ?? 'hot_desk';
+        imageUrl = categoryDefaultImages[type] ?? categoryDefaultImages['hot_desk']!;
+      }
+
       return {
         'id': item['id'].toString(),
         'name': item['name'] ?? 'CoWork Space',
         'location': '${item['city'] ?? ''}, ${item['state'] ?? ''}',
-        'price': '₹$firstPlanPrice/day',
+        'price': '₹$firstPlanPrice/hour',
         'rating': 4.9,
         'status': AvailabilityStatus.available,
         'image': imageUrl,
-        'type': 'hot_desk', // Map database workspaces as hot_desk category in UI
+        'type': item['type'] ?? 'hot_desk',
       };
     }).toList();
 
-    var list = [...mappedApi, ..._allSpaces];
+    var list = [...mappedApi];
     if (widget.spaceType != 'all') {
       list = list.where((s) => s['type'] == widget.spaceType).toList();
     }
@@ -331,13 +233,19 @@ class _SpacesScreenState extends State<SpacesScreen> {
           ),
           // Grid or empty state
           Expanded(
-            child: spaces.isEmpty
-                ? Center(
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        const Icon(Icons.search_off,
-                            color: AppColors.onSurfaceVariant, size: 56),
+            child: _isLoading
+                ? const Center(
+                    child: CircularProgressIndicator(
+                      color: AppColors.primary,
+                    ),
+                  )
+                : spaces.isEmpty
+                    ? Center(
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Icon(Icons.search_off,
+                                color: AppColors.onSurfaceVariant, size: 56),
                         const SizedBox(height: 16),
                         Text(
                           'No spaces found',

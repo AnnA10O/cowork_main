@@ -4,7 +4,6 @@ import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import 'dart:developer' as dev;
 import '../../theme/app_colors.dart';
-import '../../data/app_data.dart';
 import '../../models/booking_model.dart';
 import '../../data/api_client.dart';
 
@@ -117,7 +116,7 @@ class _BookingsScreenState extends State<BookingsScreen>
       id: id,
       spaceName: workspace['name']?.toString() ?? 'Workspace',
       spaceLocation: workspace['address']?.toString() ?? workspace['city']?.toString() ?? 'Location',
-      spaceImageUrl: 'https://images.unsplash.com/photo-1497366216548-37526070297c?w=400&q=80',
+      spaceImageUrl: (workspace['images'] != null && workspace['images'] is List && workspace['images'].isNotEmpty) ? workspace['images'][0]['url'].toString() : 'https://images.unsplash.com/photo-1497366216548-37526070297c?w=400&q=80',
       workspaceName: workspace['name']?.toString() ?? 'Workspace',
       seatId: 'Desk ${desk['deskNumber']?.toString() ?? 'A'}',
       location: workspace['city']?.toString() ?? 'Location',
@@ -134,7 +133,7 @@ class _BookingsScreenState extends State<BookingsScreen>
     if (_liveBookings != null) {
       return _liveBookings!.where((b) => b.status == status).toList();
     }
-    return AppData.bookings.where((b) => b.status == status).toList();
+    return [];
   }
 
   @override
@@ -175,8 +174,8 @@ class _BookingsScreenState extends State<BookingsScreen>
           GoogleFonts.inter(fontWeight: FontWeight.w400, fontSize: 14),
           tabs: const [
             Tab(text: 'Upcoming'),
-            Tab(text: 'Active'),
             Tab(text: 'Past'),
+            Tab(text: 'Cancelled'),
           ],
         ),
       ),
@@ -192,12 +191,12 @@ class _BookingsScreenState extends State<BookingsScreen>
                     tab: 'upcoming',
                     onRefresh: _loadLiveBookings),
                 _BookingList(
-                    bookings: [],
-                    tab: 'active',
-                    onRefresh: _loadLiveBookings),
-                _BookingList(
                     bookings: _filtered('completed'),
                     tab: 'past',
+                    onRefresh: _loadLiveBookings),
+                _BookingList(
+                    bookings: _filtered('cancelled'),
+                    tab: 'cancelled',
                     onRefresh: _loadLiveBookings),
               ],
             ),
@@ -235,7 +234,10 @@ class _BookingList extends StatelessWidget {
       padding: const EdgeInsets.all(20),
       itemCount: bookings.length,
       separatorBuilder: (_, __) => const SizedBox(height: 14),
-      itemBuilder: (context, i) => _BookingCard(booking: bookings[i]),
+      itemBuilder: (context, i) => _BookingCard(
+        booking: bookings[i],
+        onCancelSuccess: onRefresh,
+      ),
     );
 
     return onRefresh != null
@@ -249,7 +251,9 @@ class _BookingList extends StatelessWidget {
 
 class _BookingCard extends StatelessWidget {
   final BookingModel booking;
-  const _BookingCard({required this.booking});
+  final VoidCallback? onCancelSuccess;
+  
+  const _BookingCard({required this.booking, this.onCancelSuccess});
 
   Color get _statusColor {
     switch (booking.status) {
@@ -471,7 +475,7 @@ class _BookingCard extends StatelessWidget {
                     onPressed: () {
                       showDialog(
                         context: context,
-                        builder: (_) => AlertDialog(
+                        builder: (dialogContext) => AlertDialog(
                           backgroundColor: AppColors.surfaceContainer,
                           title: Text(
                             'Cancel Booking?',
@@ -486,19 +490,38 @@ class _BookingCard extends StatelessWidget {
                           ),
                           actions: [
                             TextButton(
-                              onPressed: () => Navigator.pop(context),
+                              onPressed: () => Navigator.pop(dialogContext),
                               child: Text('Keep',
                                   style: GoogleFonts.inter(
                                       color: AppColors.primary)),
                             ),
                             TextButton(
-                              onPressed: () {
-                                Navigator.pop(context);
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(
-                                      content:
-                                      Text('Cancellation coming soon')),
-                                );
+                              onPressed: () async {
+                                final navigator = Navigator.of(dialogContext);
+                                final messenger = ScaffoldMessenger.of(context);
+                                
+                                navigator.pop(); // Close dialog safely
+                                
+                                final token = ApiClient.authToken;
+                                if (token != null) {
+                                  messenger.showSnackBar(
+                                    const SnackBar(content: Text('Cancelling booking...')),
+                                  );
+                                  
+                                  final success = await ApiClient.cancelBooking(booking.id, token);
+                                  if (success) {
+                                    messenger.showSnackBar(
+                                      const SnackBar(content: Text('Booking cancelled successfully!')),
+                                    );
+                                    if (onCancelSuccess != null) {
+                                      onCancelSuccess!();
+                                    }
+                                  } else {
+                                    messenger.showSnackBar(
+                                      const SnackBar(content: Text('Failed to cancel booking.')),
+                                    );
+                                  }
+                                }
                               },
                               child: Text('Cancel',
                                   style: GoogleFonts.inter(

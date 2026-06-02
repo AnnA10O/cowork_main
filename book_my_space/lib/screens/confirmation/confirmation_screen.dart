@@ -67,7 +67,13 @@ class ConfirmationScreen extends StatelessWidget {
                 const SizedBox(height: 32),
 
                 // E-Pass Ticket
-                _EPassTicket(spaceName: spaceName, ref: ref),
+                _EPassTicket(
+                  spaceName: spaceName,
+                  ref: ref,
+                  seatLabel: bookingData['seatType']?.toString() ?? 'Workspace Seat',
+                  dateLabel: bookingData['date']?.toString() ?? 'N/A',
+                  timeLabel: bookingData['startTime']?.toString() ?? 'N/A',
+                ),
 
                 const SizedBox(height: 32),
 
@@ -137,8 +143,17 @@ class ConfirmationScreen extends StatelessWidget {
 class _EPassTicket extends StatelessWidget {
   final String spaceName;
   final String ref;
+  final String seatLabel;
+  final String dateLabel;
+  final String timeLabel;
 
-  const _EPassTicket({required this.spaceName, required this.ref});
+  const _EPassTicket({
+    required this.spaceName,
+    required this.ref,
+    required this.seatLabel,
+    required this.dateLabel,
+    required this.timeLabel,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -275,7 +290,7 @@ class _EPassTicket extends StatelessWidget {
                     Expanded(
                       child: _TicketField(
                         label: 'SEAT',
-                        value: 'Desk A12',
+                        value: seatLabel,
                         isLeft: false,
                       ),
                     ),
@@ -287,7 +302,7 @@ class _EPassTicket extends StatelessWidget {
                     Expanded(
                       child: _TicketField(
                         label: 'DATE',
-                        value: 'Oct 24, 2023',
+                        value: dateLabel,
                         isLeft: true,
                         isSmall: true,
                       ),
@@ -295,7 +310,7 @@ class _EPassTicket extends StatelessWidget {
                     Expanded(
                       child: _TicketField(
                         label: 'TIME',
-                        value: '09:00 AM',
+                        value: timeLabel,
                         isLeft: false,
                         isSmall: true,
                       ),

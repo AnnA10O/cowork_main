@@ -5,6 +5,8 @@ import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 import '../../theme/app_colors.dart';
 import '../../widgets/glass_card.dart';
+import '../../data/api_client.dart';
+
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Space data with coordinates for the map
@@ -28,100 +30,17 @@ class _MapSpace {
   });
 }
 
-const _mapSpaces = [
-  _MapSpace(
-    id: 'fmciii',
-    name: 'FMCIII Executive Lounge',
-    location: 'BKC, Mumbai',
-    price: '₹3,500/day',
-    type: 'Hot Desk',
-    rating: 4.9,
-    coords: LatLng(19.0596, 72.8656),
-    status: AvailabilityStatus.available,
-    imageUrl: 'https://images.unsplash.com/photo-1497366216548-37526070297c?w=400&q=80',
-  ),
-  _MapSpace(
-    id: 'vault_prime',
-    name: 'Vault Prime Suite',
-    location: 'Nariman Point, Mumbai',
-    price: '₹2,000/hr',
-    type: 'Meeting Room',
-    rating: 5.0,
-    coords: LatLng(18.9253, 72.8244),
-    status: AvailabilityStatus.available,
-    imageUrl: 'https://images.unsplash.com/photo-1560179707-f14e90ef3623?w=400&q=80',
-  ),
-  _MapSpace(
-    id: 'nexus_virtual',
-    name: 'Nexus Virtual Office',
-    location: 'Andheri, Mumbai',
-    price: '₹2,000/mo',
-    type: 'Virtual Office',
-    rating: 4.7,
-    coords: LatLng(19.1136, 72.8697),
-    status: AvailabilityStatus.available,
-    imageUrl: 'https://images.unsplash.com/photo-1553877522-43269d4ea984?w=400&q=80',
-  ),
-  _MapSpace(
-    id: 'glass_house',
-    name: 'The Glass House',
-    location: 'HSR Layout, Bengaluru',
-    price: '₹19,000/day',
-    type: 'Private Office',
-    rating: 4.9,
-    coords: LatLng(12.9116, 77.6389),
-    status: AvailabilityStatus.available,
-    imageUrl: 'https://images.unsplash.com/photo-1504384308090-c894fdcc538d?w=400&q=80',
-  ),
-  _MapSpace(
-    id: 'the_deck',
-    name: 'The Deck Co-Work',
-    location: 'Koramangala, Bengaluru',
-    price: '₹1,200/hr',
-    type: 'Hot Desk',
-    rating: 4.9,
-    coords: LatLng(12.9352, 77.6245),
-    status: AvailabilityStatus.fillingFast,
-    imageUrl: 'https://images.unsplash.com/photo-1462826303086-329426d1aef5?w=400&q=80',
-  ),
-  _MapSpace(
-    id: 'atlas_labs',
-    name: 'Atlas Labs',
-    location: 'Whitefield, Bengaluru',
-    price: '₹800/hr',
-    type: 'Cabin',
-    rating: 4.7,
-    coords: LatLng(12.9698, 77.7500),
-    status: AvailabilityStatus.available,
-    imageUrl: 'https://images.unsplash.com/photo-1531973576160-7125cd663d86?w=400&q=80',
-  ),
-  _MapSpace(
-    id: 'hive_soho',
-    name: 'Hive CP Studio',
-    location: 'Connaught Place, Delhi',
-    price: '₹950/hr',
-    type: 'Shared Space',
-    rating: 4.8,
-    coords: LatLng(28.6315, 77.2167),
-    status: AvailabilityStatus.available,
-    imageUrl: 'https://images.unsplash.com/photo-1497366754035-f200968a6e72?w=400&q=80',
-  ),
-  _MapSpace(
-    id: 'campus_room',
-    name: 'Campus Training Room',
-    location: 'Sector 44, Gurgaon',
-    price: '₹6,500/half-day',
-    type: 'Training Room',
-    rating: 4.6,
-    coords: LatLng(28.4595, 77.0266),
-    status: AvailabilityStatus.fillingFast,
-    imageUrl: 'https://images.unsplash.com/photo-1524178232363-1fb2b075b655?w=400&q=80',
-  ),
-];
+const Map<String, String> categoryDefaultImages = {
+  'hot_desk': 'https://images.unsplash.com/photo-1497366216548-37526070297c?w=800&q=80',
+  'private_cabin': 'https://images.unsplash.com/photo-1531973576160-7125cd663d86?w=800&q=80',
+  'meeting_room': 'https://images.unsplash.com/photo-1504384308090-c894fdcc538d?w=800&q=80',
+  'shared_space': 'https://images.unsplash.com/photo-1497366754035-f200968a6e72?w=800&q=80',
+  'event_hall': 'https://images.unsplash.com/photo-1582268611958-ebfd161ef9cf?w=800&q=80',
+  'virtual_office': 'https://images.unsplash.com/photo-1553877522-43269d4ea984?w=800&q=80',
+  'podcast_studio': 'https://images.unsplash.com/photo-1478737270239-2f02b77fc618?w=800&q=80',
+  'training_room': 'https://images.unsplash.com/photo-1524178232363-1fb2b075b655?w=800&q=80',
+};
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Map Screen
-// ─────────────────────────────────────────────────────────────────────────────
 class MapScreen extends StatefulWidget {
   const MapScreen({super.key});
   @override
@@ -133,15 +52,72 @@ class _MapScreenState extends State<MapScreen> {
   _MapSpace? _selectedSpace;
   String _searchQuery = '';
   final _searchCtrl = TextEditingController();
+  List<_MapSpace> _apiMapSpaces = [];
+  bool _isLoading = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadWorkspaces();
+  }
+
+  Future<void> _loadWorkspaces() async {
+    if (!mounted) return;
+    setState(() => _isLoading = true);
+    final results = await ApiClient.fetchWorkspaces();
+    if (results != null && mounted) {
+      setState(() {
+        _apiMapSpaces = results.map((item) {
+          final plans = item['pricingPlans'] as List?;
+          final firstPlanPrice = (plans != null && plans.isNotEmpty) ? plans[0]['basePrice'] : 199;
+          
+          final images = item['images'] as List?;
+          String imageUrl;
+          if (images != null && images.any((img) => (img['order'] as int) >= 0)) {
+            final mainImages = images.where((img) => (img['order'] as int) >= 0).toList();
+            dynamic coverImg;
+            for (final img in mainImages) {
+              if (img['order'] == 0) {
+                coverImg = img;
+                break;
+              }
+            }
+            imageUrl = coverImg != null ? coverImg['url'].toString() : mainImages[0]['url'].toString();
+          } else {
+            final type = item['type'] as String? ?? 'hot_desk';
+            imageUrl = categoryDefaultImages[type] ?? categoryDefaultImages['hot_desk']!;
+          }
+
+          final lat = double.tryParse(item['latitude'].toString()) ?? 19.0760;
+          final lng = double.tryParse(item['longitude'].toString()) ?? 72.8777;
+
+          return _MapSpace(
+            id: item['id'].toString(),
+            name: item['name'] ?? 'CoWork Space',
+            location: '${item['city'] ?? ''}, ${item['state'] ?? ''}',
+            price: '₹$firstPlanPrice/hour',
+            type: item['type'] ?? 'hot_desk',
+            rating: 4.9,
+            coords: LatLng(lat, lng),
+            status: AvailabilityStatus.available,
+            imageUrl: imageUrl,
+          );
+        }).toList();
+      });
+    }
+    if (mounted) {
+      setState(() => _isLoading = false);
+    }
+  }
 
   // Default center: Mumbai
   static const _defaultCenter = LatLng(19.0760, 72.8777);
   static const _defaultZoom = 5.5;
 
   List<_MapSpace> get _filtered {
-    if (_searchQuery.isEmpty) return _mapSpaces;
+    if (_searchQuery.isEmpty) return _apiMapSpaces;
     final q = _searchQuery.toLowerCase();
-    return _mapSpaces.where((s) =>
+    return _apiMapSpaces.where((s) =>
         s.name.toLowerCase().contains(q) ||
         s.location.toLowerCase().contains(q)).toList();
   }
@@ -403,6 +379,12 @@ class _MapScreenState extends State<MapScreen> {
             ),
           ),
         ),
+        if (_isLoading)
+          const Center(
+            child: CircularProgressIndicator(
+              color: AppColors.primary,
+            ),
+          ),
       ]),
     );
   }

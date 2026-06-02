@@ -6,9 +6,9 @@ import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 
 class ApiClient {
-  // Use http://10.0.2.2:3000/api/v1 for Android Emulator loopback,
-  // http://localhost:3000/api/v1 for Web/iOS, or your custom local network IP.
-  static String baseUrl = 'http://localhost:3000/api/v1';
+  // Dev: run with `flutter run` (requires: adb reverse tcp:3000 tcp:3000)
+  // Prod: run with `flutter build apk --dart-define=API_URL=https://api.yourbackend.com/api/v1`
+  static String baseUrl = const String.fromEnvironment('API_URL', defaultValue: 'http://localhost:3000/api/v1');
 
   static String? _authToken;
   static Map<String, dynamic>? _currentUser;
@@ -37,14 +37,14 @@ class ApiClient {
         try {
           // Probe localhost (with a short timeout to prevent blocking app startup)
           final testUri = Uri.parse('$baseUrl/mobile/workspaces');
-          final response = await http.get(testUri).timeout(const Duration(milliseconds: 600));
+          await http.get(testUri).timeout(const Duration(milliseconds: 600));
           dev.log('API: Localhost server resolved successfully! Keeping baseUrl: $baseUrl');
         } catch (e) {
           dev.log('API: Localhost unreachable on Android ($e). Checking Emulator loopback...');
           final emulatorUrl = baseUrl.replaceAll('localhost', '10.0.2.2');
           try {
             final testUri = Uri.parse('$emulatorUrl/mobile/workspaces');
-            final response = await http.get(testUri).timeout(const Duration(milliseconds: 600));
+            await http.get(testUri).timeout(const Duration(milliseconds: 600));
             baseUrl = emulatorUrl;
             dev.log('API: Emulator detected! Automatically mapped baseUrl to: $baseUrl');
           } catch (e2) {
@@ -159,9 +159,27 @@ class ApiClient {
         }
       }
     } catch (e) {
-      dev.log('API Error (fetchWorkspaces): $e. Seamlessly falling back to local synthetic data.', error: e);
+      dev.log('API Error (fetchWorkspaces): $e', error: e);
     }
     return null;
+  }
+
+  /// GET /mobile/workspaces?limit=1 — Fetch total count of workspaces
+  static Future<int> fetchTotalWorkspacesCount() async {
+    try {
+      final uri = Uri.parse('$baseUrl/mobile/workspaces?limit=1');
+      final response = await http.get(uri).timeout(const Duration(seconds: 4));
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        final payload = data['data'] ?? data;
+        if (payload['total'] != null) {
+          return payload['total'] as int;
+        }
+      }
+    } catch (e) {
+      dev.log('API Error (fetchTotalWorkspacesCount): $e');
+    }
+    return 84;
   }
 
   /// GET /mobile/workspaces/:id — Fetch full detail of a specific workspace
@@ -179,18 +197,40 @@ class ApiClient {
         }
       }
     } catch (e) {
-      dev.log('API Error (fetchWorkspaceDetail): $e. Seamlessly falling back to local synthetic data.', error: e);
+      dev.log('API Error (fetchWorkspaceDetail): $e', error: e);
     }
     return null;
   }
 
   /// GET /mobile/workspaces/:id/availability?date=YYYY-MM-DD — Fetch desk availability
-  static Future<List<Map<String, dynamic>>?> fetchDeskAvailability(String id, String date) async {
+  static Future<List<Map<String, dynamic>>?> fetchDeskAvailability(String workspaceId, String date, {String? startTime, String? endTime}) async {
     try {
-      final uri = Uri.parse('$baseUrl/mobile/workspaces/$id/availability').replace(
-        queryParameters: {'date': date},
-      );
+      String url = '$baseUrl/mobile/workspaces/$workspaceId/availability?date=$date';
+      if (startTime != null) url += '&startTime=${Uri.encodeComponent(startTime)}';
+      if (endTime != null) url += '&endTime=${Uri.encodeComponent(endTime)}';
+      
+      final uri = Uri.parse(url);
       dev.log('API: Fetching desk availability from: $uri');
+      final response = await http.get(uri).timeout(const Duration(seconds: 5));
+
+      if (response.statusCode == 200) {
+        final body = jsonDecode(response.body);
+        final data = body['data'] ?? body;
+        if (data is List) {
+          return List<Map<String, dynamic>>.from(data.map((d) => Map<String, dynamic>.from(d)));
+        }
+      }
+    } catch (e) {
+      dev.log('API Error (fetchDeskAvailability): $e', error: e);
+    }
+    return null;
+  }
+
+  /// GET /mobile/workspaces/:id/extra-services — Fetch extra services for workspace
+  static Future<List<Map<String, dynamic>>?> fetchExtraServices(String workspaceId) async {
+    try {
+      final uri = Uri.parse('$baseUrl/workspaces/$workspaceId/extra-services');
+      dev.log('API: Fetching extra services from: $uri');
       final response = await http.get(uri).timeout(const Duration(seconds: 4));
 
       if (response.statusCode == 200) {
@@ -201,7 +241,7 @@ class ApiClient {
         }
       }
     } catch (e) {
-      dev.log('API Error (fetchDeskAvailability): $e. Seamlessly falling back to local synthetic data.', error: e);
+      dev.log('API Error (fetchExtraServices): $e', error: e);
     }
     return null;
   }
@@ -213,7 +253,9 @@ class ApiClient {
     required String pricingPlanId,
     required String startTime,
     required String endTime,
+    List<String>? bookedSlots,
     String? couponCode,
+    List<Map<String, dynamic>>? extras,
     required String authToken,
   }) async {
     try {
@@ -224,7 +266,9 @@ class ApiClient {
         'pricingPlanId': pricingPlanId,
         'startTime': startTime,
         'endTime': endTime,
+        if (bookedSlots != null && bookedSlots.isNotEmpty) 'bookedSlots': bookedSlots,
         if (couponCode != null) 'couponCode': couponCode,
+        if (extras != null && extras.isNotEmpty) 'extras': extras,
       });
 
       final response = await http.post(
@@ -234,9 +278,9 @@ class ApiClient {
           'Authorization': 'Bearer $authToken',
         },
         body: body,
-      ).timeout(const Duration(seconds: 5));
+      ).timeout(const Duration(seconds: 15));
 
-      if (response.statusCode == 201) {
+      if (response.statusCode == 201 || response.statusCode == 200) {
         final data = jsonDecode(response.body);
         return Map<String, dynamic>.from(data['data'] ?? data);
       }
@@ -244,6 +288,27 @@ class ApiClient {
       dev.log('API Error (createBooking): $e', error: e);
     }
     return null;
+  }
+
+  /// PATCH /mobile/bookings/:id/cancel — Cancel a booking
+  static Future<bool> cancelBooking(String bookingId, String authToken) async {
+    try {
+      final uri = Uri.parse('$baseUrl/mobile/bookings/$bookingId/cancel');
+      final response = await http.patch(
+        uri,
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $authToken',
+        },
+      ).timeout(const Duration(seconds: 10));
+
+      if (response.statusCode == 200) {
+        return true;
+      }
+    } catch (e) {
+      dev.log('API Error (cancelBooking): $e', error: e);
+    }
+    return false;
   }
 
   /// GET /mobile/bookings/my — Fetch customer's real bookings
@@ -257,7 +322,7 @@ class ApiClient {
           'Content-Type': 'application/json',
           'Authorization': 'Bearer $authToken',
         },
-      ).timeout(const Duration(seconds: 5));
+      ).timeout(const Duration(seconds: 10));
 
       if (response.statusCode == 200) {
         final body = jsonDecode(response.body);

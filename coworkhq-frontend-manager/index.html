@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CoWork HQ — Manager Portal</title>
+  <meta name="description" content="CoWork HQ Manager Portal — Manage workspaces, bookings, payments, staff, and analytics from one powerful dashboard.">
+
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+  <!-- Icons -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css">
+
+  <!-- App Styles -->
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+
+  <!-- ════════════════════════════════
+       AUTH SCREEN
+  ════════════════════════════════ -->
+  <div class="screen active" id="auth-screen">
+    <div class="auth-bg"></div>
+    <div class="auth-card" id="auth-card">
+      <div class="auth-logo">
+        <div class="auth-logo-sq">CW</div>
+        <div>
+          <div class="auth-logo-name">CoWork HQ</div>
+          <div class="auth-logo-sub">Manager Portal</div>
+        </div>
+      </div>
+      <div class="auth-title" id="auth-title">Welcome back</div>
+      <div class="auth-sub" id="auth-sub">Login to your CoWork HQ</div>
+      <div class="auth-tabs">
+        <div class="auth-tab active" id="tab-login" onclick="App.switchTab('login')">Login</div>
+        <div class="auth-tab" id="tab-signup" onclick="App.switchTab('signup')">Sign Up</div>
+      </div>
+      <div id="auth-form-body"></div>
+    </div>
+  </div>
+
+  <!-- ════════════════════════════════
+       APP SCREEN
+  ════════════════════════════════ -->
+  <div class="screen" id="app-screen">
+    <nav class="nav">
+      <div class="nav-logo" onclick="App.goHome()">
+        <div class="nav-logo-sq">CW</div>
+        <div>
+          <div class="nav-logo-text">CoWork HQ</div>
+          <div class="nav-logo-sub">Manager Portal</div>
+        </div>
+      </div>
+      <div class="nav-ic-btn" id="shortcuts-btn" onclick="App.openShortcutsModal()" title="Keyboard Shortcuts">
+        <i class="ti ti-keyboard"></i>
+      </div>
+      <div class="nav-search">
+        <i class="ti ti-search nav-si"></i>
+        <input type="text" placeholder="Search workspaces, bookings, staff..." id="global-search">
+      </div>
+      <div class="nav-r">
+        <div class="nav-ic-btn" onclick="App.openMod('notifications')" title="Notifications" id="notif-btn">
+          <i class="ti ti-bell"></i>
+          <span class="nd"></span>
+        </div>
+        <div class="nav-ic-btn" id="shortcuts-toggle-btn" onclick="App.toggleShortcuts()" title="Toggle Keyboard Shortcuts">
+          <i class="ti ti-keyboard"></i>
+        </div>
+        <div class="nav-ic-btn" id="theme-btn" onclick="App.toggleTheme()" title="Toggle Theme">
+          <i class="ti ti-sun" id="theme-icon"></i>
+        </div>
+        <div class="nav-av" id="nav-av" onclick="App.toggleDD()">?</div>
+        <div class="user-dd" id="user-dd" style="display:none"></div>
+      </div>
+    </nav>
+    <div class="content" id="content"></div>
+  </div>
+
+  <!-- Toast Container -->
+  <div class="toast-wrap" id="toasts"></div>
+
+  <!-- ════════════════════════════════
+       SCRIPTS (order matters)
+  ════════════════════════════════ -->
+  <script src="config.js"></script>
+  <script src="js/api.js"></script>
+  <script src="js/app.js?v=2"></script>
+  <script>
+    // Bootstrap the application
+    document.addEventListener('DOMContentLoaded', () => App.init());
+  </script>
+</body>
+</html>

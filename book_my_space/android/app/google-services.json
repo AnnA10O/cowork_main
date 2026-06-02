@@ -14,6 +14,22 @@
       },
       "oauth_client": [
         {
+          "client_id": "864036256863-3mvl1rt94fdl56fus600h5eh7pvu212e.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "Book_my_space0.android",
+            "certificate_hash": "242c8da6e392c24dde892ba76485b4bd86bf9c62"
+          }
+        },
+        {
+          "client_id": "864036256863-6eaqrl53qfpf44qkqoi61btifishfcjc.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "Book_my_space0.android",
+            "certificate_hash": "21b38ebec2551b0ac3e1977ab81c6c68992a5658"
+          }
+        },
+        {
           "client_id": "864036256863-taa2tii2dbmqgkirho1s744qrnr22rv0.apps.googleusercontent.com",
           "client_type": 3
         }
@@ -29,6 +45,57 @@
             {
               "client_id": "864036256863-taa2tii2dbmqgkirho1s744qrnr22rv0.apps.googleusercontent.com",
               "client_type": 3
+            },
+            {
+              "client_id": "864036256863-os0a7nl5p8el8bdv2ngruqjbcfo31j4d.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.bookmyspace.bookMySpace"
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:864036256863:android:45b25c7df33cf95169efea",
+        "android_client_info": {
+          "package_name": "com.bookmyspace.book_my_space"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "864036256863-e56hhtrepih593lmlhnrl0ktru0a832q.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.bookmyspace.book_my_space",
+            "certificate_hash": "21b38ebec2551b0ac3e1977ab81c6c68992a5658"
+          }
+        },
+        {
+          "client_id": "864036256863-taa2tii2dbmqgkirho1s744qrnr22rv0.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAQ1-EJUOpQ0W8l5VJdQ5o2FhybKCfigVQ"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "864036256863-taa2tii2dbmqgkirho1s744qrnr22rv0.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "864036256863-os0a7nl5p8el8bdv2ngruqjbcfo31j4d.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.bookmyspace.bookMySpace"
+              }
             }
           ]
         }
