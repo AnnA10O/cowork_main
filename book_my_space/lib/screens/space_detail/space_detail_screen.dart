@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import '../../data/api_client.dart';
 import '../../theme/app_colors.dart';
 import '../../data/workspace_data.dart';
@@ -71,17 +72,25 @@ class _SpaceDetailScreenState extends State<SpaceDetailScreen>
     final data = await ApiClient.fetchWorkspaceDetail(widget.spaceId);
     if (data != null) {
       final plans = data['pricingPlans'] as List?;
-      final double startingPrice = (plans != null && plans.isNotEmpty) 
-          ? double.tryParse(plans[0]['basePrice']?.toString() ?? '') ?? 199.0
-          : 199.0;
+      final double startingPrice = (plans != null && plans.isNotEmpty)
+          ? double.tryParse(plans[0]['basePrice']?.toString() ?? '') ?? 0.0
+          : 0.0;
       
       // Always use real uploaded images if available, regardless of useDefaultImages flag
       final images = data['images'] as List?;
       String imageUrl;
-      final mainImages = images?.where((img) => (img['order'] as int? ?? -99) >= 0).toList() ?? [];
-      if (mainImages.isNotEmpty) {
-        mainImages.sort((a, b) => (a['order'] as int).compareTo(b['order'] as int));
-        imageUrl = mainImages.map((img) => img['url'].toString()).join(';');
+      if (images != null && images.isNotEmpty) {
+        // Only cover (order=0) + slideshow (order>0), exclude category images (order<0)
+        final slideshowImgs = images
+            .where((img) => ((img['order'] as num?)?.toInt() ?? -1) >= 0)
+            .toList();
+        if (slideshowImgs.isNotEmpty) {
+          slideshowImgs.sort((a, b) => ((a['order'] as num?)?.toInt() ?? 0).compareTo((b['order'] as num?)?.toInt() ?? 0));
+          imageUrl = slideshowImgs.map((img) => img['url'].toString()).join(';');
+        } else {
+          final type = data['type'] as String? ?? 'hot_desk';
+          imageUrl = categoryDefaultImages[type] ?? categoryDefaultImages['hot_desk']!;
+        }
       } else {
         final type = data['type'] as String? ?? 'hot_desk';
         imageUrl = categoryDefaultImages[type] ?? categoryDefaultImages['hot_desk']!;
@@ -178,13 +187,24 @@ class _SpaceDetailScreenState extends State<SpaceDetailScreen>
           name: data['name'] ?? 'Workspace',
           subtitle: '${data['address'] ?? ''}, ${data['city'] ?? ''}',
           imageUrl: imageUrl,
-          rating: 4.9,
-          reviews: 120,
+          rating: () {
+            final raw = data['rating'] ?? data['avgRating'] ?? data['averageRating'];
+            if (raw is double) return raw;
+            if (raw is int) return raw.toDouble();
+            if (raw is String) return double.tryParse(raw) ?? 0.0;
+            return 0.0;
+          }(),
+          reviews: () {
+            final raw = data['reviewCount'] ?? data['totalReviews'] ?? data['reviews'];
+            if (raw is int) return raw;
+            if (raw is String) return int.tryParse(raw) ?? 0;
+            return 0;
+          }(),
           startingPrice: startingPrice,
           priceLabel: '/ hour',
           description: data['description'] ?? 'Co-working workspace',
           amenities: mappedAmenities,
-          badge: data['badge'] ?? 'PREMIUM',
+          badge: data['badge']?.toString(),
           showSchedulePicker: false,
           seatCategories: categories,
         );
@@ -232,7 +252,15 @@ class _SpaceDetailScreenState extends State<SpaceDetailScreen>
   // ---------------------------------------------------------------------------
   Widget _buildHero() {
     final space = _space!;
-    final images = space.imageUrl.split(';');
+    // Filter and validate image URLs
+    final images = space.imageUrl
+        .split(';')
+        .map((s) => s.trim())
+        .where((s) => s.isNotEmpty)
+        .toList();
+    if (images.isEmpty) {
+      images.add('https://images.unsplash.com/photo-1497366216548-37526070297c?w=1200&q=80');
+    }
     Widget imageWidget;
     if (images.length > 1) {
       imageWidget = Stack(
@@ -245,10 +273,11 @@ class _SpaceDetailScreenState extends State<SpaceDetailScreen>
               });
             },
             itemBuilder: (context, index) {
-              return Image.network(
-                images[index],
+              return CachedNetworkImage(
+                imageUrl: images[index],
                 fit: BoxFit.cover,
-                errorBuilder: (_, __, ___) =>
+                placeholder: (context, url) => Container(color: AppColors.surfaceContainerHigh),
+                errorWidget: (context, url, error) =>
                     Container(color: AppColors.surfaceContainerHigh),
               );
             },
@@ -260,12 +289,13 @@ class _SpaceDetailScreenState extends State<SpaceDetailScreen>
               mainAxisSize: MainAxisSize.min,
               children: List.generate(
                 images.length,
-                (index) => Container(
-                  width: 6,
+                (index) => AnimatedContainer(
+                  duration: const Duration(milliseconds: 200),
+                  width: _currentHeroPage == index ? 18 : 6,
                   height: 6,
                   margin: const EdgeInsets.symmetric(horizontal: 3),
                   decoration: BoxDecoration(
-                    shape: BoxShape.circle,
+                    borderRadius: BorderRadius.circular(3),
                     color: _currentHeroPage == index
                         ? AppColors.primary
                         : Colors.white.withOpacity(0.4),
@@ -277,10 +307,11 @@ class _SpaceDetailScreenState extends State<SpaceDetailScreen>
         ],
       );
     } else {
-      imageWidget = Image.network(
-        images[0],
+      imageWidget = CachedNetworkImage(
+        imageUrl: images[0],
         fit: BoxFit.cover,
-        errorBuilder: (_, __, ___) =>
+        placeholder: (context, url) => Container(color: AppColors.surfaceContainerHigh),
+        errorWidget: (context, url, error) =>
             Container(color: AppColors.surfaceContainerHigh),
       );
     }
@@ -477,7 +508,7 @@ class _SpaceDetailScreenState extends State<SpaceDetailScreen>
                     ),
                     const SizedBox(width: 4),
                     Text(
-                      'Available',
+                      _space!.startingPrice > 0 ? 'Available' : 'Unavailable',
                       style: GoogleFonts.inter(
                         fontSize: 12,
                         fontWeight: FontWeight.w600,

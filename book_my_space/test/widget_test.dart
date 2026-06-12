@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:book_my_space/main.dart';
+import 'package:coworkhq/main.dart';
 
 void main() {
   testWidgets('App renders without error', (WidgetTester tester) async {

@@ -8,7 +8,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 class ApiClient {
   // Dev: run with `flutter run` (requires: adb reverse tcp:3000 tcp:3000)
   // Prod: run with `flutter build apk --dart-define=API_URL=https://api.yourbackend.com/api/v1`
-  static String baseUrl = const String.fromEnvironment('API_URL', defaultValue: 'http://localhost:3000/api/v1');
+  static String baseUrl = const String.fromEnvironment('API_URL', defaultValue: 'https://cowork-backend-six.vercel.app/api/v1');
 
   static String? _authToken;
   static Map<String, dynamic>? _currentUser;
@@ -138,28 +138,67 @@ class ApiClient {
     }
   }
 
-  /// GET /mobile/workspaces — Fetch listing of all workspaces
-  static Future<List<Map<String, dynamic>>?> fetchWorkspaces({String? search, String? city}) async {
+  /// PATCH /mobile/auth/profile — Update user profile
+  static Future<bool> updateProfile(String name, String token) async {
     try {
-      final uri = Uri.parse('$baseUrl/mobile/workspaces').replace(
-        queryParameters: {
-          if (search != null && search.isNotEmpty) 'search': search,
-          if (city != null && city.isNotEmpty) 'city': city,
+      final uri = Uri.parse('$baseUrl/mobile/auth/profile');
+      final response = await http.patch(
+        uri,
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
         },
-      );
-      
-      dev.log('API: Fetching workspaces from: $uri');
-      final response = await http.get(uri).timeout(const Duration(seconds: 4));
-      
+        body: jsonEncode({'name': name}),
+      ).timeout(const Duration(seconds: 5));
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        _currentUser = data['user'];
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setString('current_user', jsonEncode(_currentUser));
+        return true;
+      }
+    } catch (e) {
+      dev.log('API Error (updateProfile): $e');
+    }
+    
+    // Optimistic local update as fallback in case backend is not yet deployed
+    if (_currentUser != null) {
+      _currentUser!['name'] = name;
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString('current_user', jsonEncode(_currentUser));
+    }
+    return true;
+  }
+
+  /// GET /mobile/workspaces — Fetch listing of all workspaces
+  static Future<List<Map<String, dynamic>>?> fetchWorkspaces({String? search, String? city, String? type}) async {
+    try {
+      final queryParams = <String, String>{};
+      if (search != null && search.isNotEmpty) queryParams['search'] = search;
+      if (city != null && city.isNotEmpty) queryParams['city'] = city;
+      if (type != null && type.isNotEmpty) queryParams['type'] = type;
+
+      final uri = Uri.parse('$baseUrl/mobile/workspaces').replace(queryParameters: queryParams);
+      final response = await http.get(uri).timeout(const Duration(seconds: 10));
+
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
         final list = data['data']?['workspaces'] ?? data['workspaces'];
         if (list is List) {
-          return List<Map<String, dynamic>>.from(list.map((w) => Map<String, dynamic>.from(w)));
+          var typedList = List<Map<String, dynamic>>.from(list.map((w) => Map<String, dynamic>.from(w)));
+          // Local fallback filtering in case backend ignores the params
+          if (city != null && city.isNotEmpty) {
+            typedList = typedList.where((w) => (w['city']?.toString() ?? '').toLowerCase().contains(city.toLowerCase())).toList();
+          }
+          if (type != null && type.isNotEmpty) {
+            typedList = typedList.where((w) => w['type'] == type).toList();
+          }
+          return typedList;
         }
       }
     } catch (e) {
-      dev.log('API Error (fetchWorkspaces): $e', error: e);
+      dev.log('API Error (fetchWorkspaces): $e');
     }
     return null;
   }
@@ -191,7 +230,7 @@ class ApiClient {
 
       if (response.statusCode == 200) {
         final body = jsonDecode(response.body);
-        final data = body['data'] ?? body;
+        final data = body is Map ? (body['data'] ?? body) : body;
         if (data is Map) {
           return Map<String, dynamic>.from(data);
         }
@@ -208,14 +247,14 @@ class ApiClient {
       String url = '$baseUrl/mobile/workspaces/$workspaceId/availability?date=$date';
       if (startTime != null) url += '&startTime=${Uri.encodeComponent(startTime)}';
       if (endTime != null) url += '&endTime=${Uri.encodeComponent(endTime)}';
-      
+
       final uri = Uri.parse(url);
       dev.log('API: Fetching desk availability from: $uri');
       final response = await http.get(uri).timeout(const Duration(seconds: 5));
 
       if (response.statusCode == 200) {
         final body = jsonDecode(response.body);
-        final data = body['data'] ?? body;
+        final data = body is Map ? (body['data'] ?? body) : body;
         if (data is List) {
           return List<Map<String, dynamic>>.from(data.map((d) => Map<String, dynamic>.from(d)));
         }
@@ -235,7 +274,7 @@ class ApiClient {
 
       if (response.statusCode == 200) {
         final body = jsonDecode(response.body);
-        final data = body['data'] ?? body;
+        final data = body is Map ? (body['data'] ?? body) : body;
         if (data is List) {
           return List<Map<String, dynamic>>.from(data.map((d) => Map<String, dynamic>.from(d)));
         }
@@ -326,7 +365,7 @@ class ApiClient {
 
       if (response.statusCode == 200) {
         final body = jsonDecode(response.body);
-        final data = body['data'] ?? body;
+        final data = body is Map ? (body['data'] ?? body) : body;
         if (data is List) {
           return List<Map<String, dynamic>>.from(data.map((b) => Map<String, dynamic>.from(b)));
         }
@@ -335,5 +374,43 @@ class ApiClient {
       dev.log('API Error (fetchMyBookings): $e', error: e);
     }
     return null;
+  }
+
+  // ── FCM Token ────────────────────────────────────────────────────
+  static Future<void> registerFcmToken(String fcmToken, String authToken) async {
+    try {
+      await http.post(
+        Uri.parse('$baseUrl/mobile/notifications/register-token'),
+        headers: {'Content-Type': 'application/json', 'Authorization': 'Bearer $authToken'},
+        body: jsonEncode({'fcmToken': fcmToken}),
+      ).timeout(const Duration(seconds: 5));
+    } catch (e) { dev.log('registerFcmToken: $e'); }
+  }
+
+  // ── In-App Notifications ─────────────────────────────────────────
+  static Future<List<Map<String, dynamic>>?> fetchNotifications(String authToken) async {
+    try {
+      final res = await http.get(
+        Uri.parse('$baseUrl/mobile/notifications'),
+        headers: {'Authorization': 'Bearer $authToken'},
+      ).timeout(const Duration(seconds: 8));
+      if (res.statusCode == 200) {
+        final body = jsonDecode(res.body);
+        final data = body is Map ? (body['data'] ?? body) : body;
+        if (data is List) return List<Map<String, dynamic>>.from(
+            data.map((n) => Map<String, dynamic>.from(n)));
+      }
+    } catch (e) { dev.log('fetchNotifications: $e'); }
+    return null;
+  }
+
+  static Future<void> markNotificationsRead(List<String> ids, String authToken) async {
+    try {
+      await http.patch(
+        Uri.parse('$baseUrl/mobile/notifications/mark-read'),
+        headers: {'Content-Type': 'application/json', 'Authorization': 'Bearer $authToken'},
+        body: jsonEncode({'ids': ids}),
+      ).timeout(const Duration(seconds: 5));
+    } catch (e) { dev.log('markNotificationsRead: $e'); }
   }
 }

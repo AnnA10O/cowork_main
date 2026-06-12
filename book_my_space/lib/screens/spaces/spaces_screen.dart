@@ -62,35 +62,74 @@ class _SpacesScreenState extends State<SpacesScreen> {
 
   List<Map<String, dynamic>> get _filteredSpaces {
     final mappedApi = _apiSpaces.map((item) {
+      // Price
       final plans = item['pricingPlans'] as List?;
-      final firstPlanPrice = (plans != null && plans.isNotEmpty) ? plans[0]['basePrice'] : 199;
-      
+      String firstPlanPrice = 'N/A';
+      if (plans != null && plans.isNotEmpty) {
+        final plan = plans[0];
+        final rawPrice = plan['basePrice'] ?? plan['price'] ?? 0;
+        final price = rawPrice is double
+            ? rawPrice.toInt()
+            : rawPrice is String
+            ? (double.tryParse(rawPrice)?.toInt() ?? 0)
+            : rawPrice;
+        final type = (plan['type'] as String? ?? 'HOURLY').toLowerCase();
+        final suffix = type == 'hourly' ? '/hour'
+            : type == 'daily' ? '/day'
+            : type == 'weekly' ? '/week'
+            : type == 'monthly' ? '/month'
+            : '/hour';
+        firstPlanPrice = '$price$suffix';
+      }
+
+      // Image — only cover (order=0) + slideshow (order>0), exclude category images (order<0)
       final images = item['images'] as List?;
       String imageUrl;
-      if (images != null && images.any((img) => (img['order'] as int) >= 0)) {
-        final mainImages = images.where((img) => (img['order'] as int) >= 0).toList();
-        dynamic coverImg;
-        for (final img in mainImages) {
-          if (img['order'] == 0) {
-            coverImg = img;
-            break;
-          }
+      if (images != null && images.isNotEmpty) {
+        final slideshowImgs = images
+            .where((img) => ((img['order'] as num?)?.toInt() ?? -1) >= 0)
+            .toList();
+        if (slideshowImgs.isNotEmpty) {
+          slideshowImgs.sort((a, b) => ((a['order'] as num?)?.toInt() ?? 0).compareTo((b['order'] as num?)?.toInt() ?? 0));
+          imageUrl = slideshowImgs.map((img) => img['url'].toString()).join(';');
+        } else {
+          final type = item['type']?.toString() ?? '';
+          imageUrl = categoryDefaultImages[type] ?? categoryDefaultImages['hot_desk']!;
         }
-        imageUrl = coverImg != null ? coverImg['url'].toString() : mainImages[0]['url'].toString();
       } else {
-        final type = item['type'] as String? ?? 'hot_desk';
+        final type = item['type']?.toString() ?? '';
         imageUrl = categoryDefaultImages[type] ?? categoryDefaultImages['hot_desk']!;
       }
 
-      return {
+      // Rating
+      final rawRating = item['rating'] ?? item['avgRating'] ?? item['averageRating'];
+      double rating = 0.0;
+      if (rawRating is double) rating = rawRating;
+      else if (rawRating is int) rating = rawRating.toDouble();
+      else if (rawRating is String) rating = double.tryParse(rawRating) ?? 0.0;
+      final hasRating = rating > 0.0;
+
+      // Status
+      final rawStatus = item['status'] ?? item['isActive'];
+      AvailabilityStatus status;
+      if (rawStatus == 'ACTIVE' || rawStatus == true) {
+        status = AvailabilityStatus.available;
+      } else if (rawStatus == 'FULL' || rawStatus == 'OCCUPIED') {
+        status = AvailabilityStatus.occupied;
+      } else {
+        status = AvailabilityStatus.available; // safest fallback
+      }
+
+      return <String, dynamic>{
         'id': item['id'].toString(),
-        'name': item['name'] ?? 'CoWork Space',
+        'name': item['name']?.toString() ?? 'Unnamed Space',
         'location': '${item['city'] ?? ''}, ${item['state'] ?? ''}',
-        'price': '₹$firstPlanPrice/hour',
-        'rating': 4.9,
-        'status': AvailabilityStatus.available,
+        'price': '₹$firstPlanPrice',
+        'rating': rating,
+        'hasRating': hasRating,
+        'status': status,
         'image': imageUrl,
-        'type': item['type'] ?? 'hot_desk',
+        'type': item['type']?.toString() ?? '',
       };
     }).toList();
 
@@ -102,8 +141,8 @@ class _SpacesScreenState extends State<SpacesScreen> {
       final q = _searchQuery.toLowerCase();
       list = list
           .where((s) =>
-              (s['name'] as String).toLowerCase().contains(q) ||
-              (s['location'] as String).toLowerCase().contains(q))
+      (s['name'] as String).toLowerCase().contains(q) ||
+          (s['location'] as String).toLowerCase().contains(q))
           .toList();
     }
     return list;
@@ -290,12 +329,14 @@ class _SpacesScreenState extends State<SpacesScreen> {
                     itemBuilder: (context, i) {
                       final space = spaces[i];
                       return SpaceCard(
+                        key: ValueKey(space['id']),
                         name: space['name'] as String,
                         location: space['location'] as String,
                         imageUrl: space['image'] as String,
                         rating: space['rating'] as double,
                         price: space['price'] as String,
                         status: space['status'] as AvailabilityStatus,
+                        hasRating: space['hasRating'] as bool,
                         onTap: () => context.push('/space/${space['id']}'),
                       );
                     },

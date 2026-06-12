@@ -5,6 +5,7 @@ import { AuthModule } from '../auth/auth.module';
 import { WorkspacesModule } from '../workspaces/workspaces.module';
 import { BookingsModule } from '../bookings/bookings.module';
 import { PaymentsModule } from '../payments/payments.module';
+import { NotificationsModule } from '../notifications/notifications.module';
 
 @Module({
   imports: [
@@ -12,6 +13,7 @@ import { PaymentsModule } from '../payments/payments.module';
     WorkspacesModule,
     BookingsModule,
     PaymentsModule,
+    NotificationsModule, // ← added so controller can inject NotificationsService
   ],
   controllers: [MobileController],
   providers: [MobileService],

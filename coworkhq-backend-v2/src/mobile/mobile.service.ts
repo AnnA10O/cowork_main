@@ -34,6 +34,10 @@ export class MobileService {
     return this.authService.changePassword(userId, dto);
   }
 
+  updateProfile(userId: string, name: string) {
+    return this.authService.updateProfile(userId, name);
+  }
+
   // ── Workspaces Delegates ───────────────────────────────────────────────────
   findWorkspaces(query: any) {
     return this.workspacesService.findAll(query);

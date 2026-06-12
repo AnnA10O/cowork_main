@@ -5,13 +5,14 @@ import { MobileService } from './mobile.service';
 import { Roles, Public } from '../common/decorators';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { Role } from '@prisma/client';
-import { IsString } from 'class-validator';
+import { IsString, IsArray } from 'class-validator';
 import {
   RegisterDto, LoginDto, RefreshTokenDto, ChangePasswordDto
 } from '../auth/auth.dto';
 import {
   CreateBookingDto, RescheduleBookingDto
 } from '../bookings/bookings.controller';
+import { NotificationsService } from '../notifications/notifications.service';
 
 export class VerifyPaymentDto {
   @IsString() razorpay_order_id: string;
@@ -19,11 +20,24 @@ export class VerifyPaymentDto {
   @IsString() razorpay_signature: string;
 }
 
+export class RegisterFcmTokenDto {
+  @IsString() fcmToken: string;
+}
+
+export class MarkReadDto {
+  @IsArray()
+  @IsString({ each: true })
+  ids: string[];
+}
+
 @Controller('mobile')
 export class MobileController {
-  constructor(private mobileService: MobileService) {}
+  constructor(
+    private mobileService: MobileService,
+    private notificationsService: NotificationsService,
+  ) {}
 
-  // ── 1. AUTHENTICATION ENDPOINTS ───────────────────────────────────────────
+  // ── 1. AUTHENTICATION ─────────────────────────────────────────────────────
 
   @Public()
   @Post('auth/register')
@@ -64,7 +78,16 @@ export class MobileController {
     return this.mobileService.changePassword(userId, dto);
   }
 
-  // ── 2. WORKSPACE & SEAT SELECTION ENDPOINTS ────────────────────────────────
+  @Roles(Role.CUSTOMER)
+  @Patch('auth/profile')
+  updateProfile(
+    @CurrentUser('id') userId: string,
+    @Body('name') name: string,
+  ) {
+    return this.mobileService.updateProfile(userId, name);
+  }
+
+  // ── 2. WORKSPACE & SEAT SELECTION ─────────────────────────────────────────
 
   @Public()
   @Get('workspaces')
@@ -89,7 +112,7 @@ export class MobileController {
     return this.mobileService.getDeskAvailability(id, date, startTime, endTime);
   }
 
-  // ── 3. BOOKING & CHECKOUT ENDPOINTS ────────────────────────────────────────
+  // ── 3. BOOKINGS ───────────────────────────────────────────────────────────
 
   @Roles(Role.CUSTOMER)
   @Post('bookings')
@@ -125,7 +148,7 @@ export class MobileController {
     return this.mobileService.rescheduleBooking(id, user.customerProfile.id, dto);
   }
 
-  // ── 4. PAYMENT ENDPOINTS ───────────────────────────────────────────────────
+  // ── 4. PAYMENTS ───────────────────────────────────────────────────────────
 
   @Roles(Role.CUSTOMER)
   @Post('payments/order/:bookingId')
@@ -137,5 +160,38 @@ export class MobileController {
   @Post('payments/verify')
   verifyPayment(@Body() dto: VerifyPaymentDto) {
     return this.mobileService.verifyPayment(dto);
+  }
+
+  // ── 5. NOTIFICATIONS (mobile) ─────────────────────────────────────────────
+
+  /**
+   * Register/refresh FCM push token after login.
+   * Called by Flutter NotificationService on init and token refresh.
+   */
+  @Roles(Role.CUSTOMER)
+  @Post('notifications/register-token')
+  registerFcmToken(
+    @CurrentUser() user: any,
+    @Body() dto: RegisterFcmTokenDto,
+  ) {
+    return this.notificationsService.registerFcmToken(user.id, dto.fcmToken);
+  }
+
+  /**
+   * Fetch all in-app notifications for the logged-in customer.
+   */
+  @Roles(Role.CUSTOMER)
+  @Get('notifications')
+  getNotifications(@CurrentUser() user: any) {
+    return this.notificationsService.getAll(user.id);
+  }
+
+  /**
+   * Mark specific notifications as read.
+   */
+  @Roles(Role.CUSTOMER)
+  @Patch('notifications/mark-read')
+  markRead(@CurrentUser() user: any, @Body() dto: MarkReadDto) {
+    return this.notificationsService.markRead(user.id, dto.ids);
   }
 }

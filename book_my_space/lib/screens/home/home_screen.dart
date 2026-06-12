@@ -1,10 +1,13 @@
 import 'dart:async';
+import 'dart:developer' as dev;
 import 'package:flutter/material.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../theme/app_colors.dart';
 import '../../widgets/glass_card.dart';
 import '../../data/api_client.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 
 class HomeScreen extends StatefulWidget {
@@ -36,6 +39,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
   List<Map<String, dynamic>> _apiSpaces = [];
   bool _isLoading = false;
+  String? _prefType;
 
   @override
   void initState() {
@@ -46,10 +50,30 @@ class _HomeScreenState extends State<HomeScreen> {
   Future<void> _loadWorkspaces() async {
     if (!mounted) return;
     setState(() => _isLoading = true);
-    final results = await ApiClient.fetchWorkspaces();
+    
+    String? prefCity;
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      prefCity = prefs.getString('pref_city');
+      final pType = prefs.getString('pref_type');
+      _prefType = pType;
+      
+      if (pType != null && pType.isNotEmpty) {
+        final idx = _categories.indexWhere((c) => c['type'] == pType);
+        if (idx != -1 && mounted) {
+          setState(() => _selectedCategory = idx);
+        }
+      }
+    } catch (e) {
+      dev.log('Error loading preferences: $e');
+    }
+
+    // Fetch all workspaces (filtered by city only if set) so we don't hide everything else
+    final results = await ApiClient.fetchWorkspaces(city: prefCity);
     if (results != null && mounted) {
       setState(() {
         _apiSpaces = results;
+        // The lists will be separated dynamically in the build methods based on prefType
       });
     }
     if (mounted) {
@@ -63,16 +87,22 @@ class _HomeScreenState extends State<HomeScreen> {
     
     final images = item['images'] as List?;
     String imageUrl;
-    if (images != null && images.any((img) => (img['order'] as int) >= 0)) {
-      final mainImages = images.where((img) => (img['order'] as int) >= 0).toList();
-      dynamic coverImg;
-      for (final img in mainImages) {
-        if (img['order'] == 0) {
-          coverImg = img;
-          break;
-        }
+    if (images != null && images.isNotEmpty) {
+      // Only include cover (order=0) and slideshow images (order>0), exclude category images (order<0)
+      final slideshowImgs = images
+          .where((img) => ((img['order'] as num?)?.toInt() ?? -1) >= 0)
+          .toList();
+      if (slideshowImgs.isNotEmpty) {
+        slideshowImgs.sort((a, b) => ((a['order'] as num?)?.toInt() ?? 0).compareTo((b['order'] as num?)?.toInt() ?? 0));
+        imageUrl = slideshowImgs
+            .where((img) => img['url'] != null)
+            .map((img) => img['url'].toString())
+            .join(';');
+        dev.log('IMAGES [${item['name']}]: ${slideshowImgs.length} imgs -> "$imageUrl"');
+      } else {
+        final type = item['type'] as String? ?? 'hot_desk';
+        imageUrl = categoryDefaultImages[type] ?? categoryDefaultImages['hot_desk']!;
       }
-      imageUrl = coverImg != null ? coverImg['url'].toString() : mainImages[0]['url'].toString();
     } else {
       final type = item['type'] as String? ?? 'hot_desk';
       imageUrl = categoryDefaultImages[type] ?? categoryDefaultImages['hot_desk']!;
@@ -80,11 +110,28 @@ class _HomeScreenState extends State<HomeScreen> {
 
     return {
       'id': item['id'].toString(),
-      'name': item['name'] ?? 'CoWork Space',
+      'name': item['name']?.toString() ?? 'Unnamed Space',
       'location': '${item['city'] ?? ''}, ${item['state'] ?? ''}',
-      'price': '₹$firstPlanPrice/hour',
-      'status': AvailabilityStatus.available,
+      'price': () {
+        if (plans == null || plans.isEmpty) return 'N/A';
+        final type = (plans[0]['type'] as String? ?? 'HOURLY').toLowerCase();
+        final suffix = type == 'hourly' ? '/hour' : type == 'daily' ? '/day' : type == 'weekly' ? '/week' : type == 'monthly' ? '/month' : '/hour';
+        return '₹$firstPlanPrice$suffix';
+      }(),
+      'status': () {
+        final raw = item['status'] ?? item['isActive'];
+        if (raw == 'ACTIVE' || raw == true) return AvailabilityStatus.available;
+        if (raw == 'FULL' || raw == 'OCCUPIED') return AvailabilityStatus.occupied;
+        return AvailabilityStatus.available;
+      }(),
       'image': imageUrl,
+      'rating': () {
+        final raw = item['rating'] ?? item['avgRating'] ?? item['averageRating'];
+        if (raw is double) return raw.toStringAsFixed(1);
+        if (raw is int) return raw.toDouble().toStringAsFixed(1);
+        if (raw is String && raw.isNotEmpty) return raw;
+        return '';
+      }(),
     };
   }
 
@@ -178,7 +225,12 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildAvailableSection() {
-    final uiSpaces = _apiSpaces.map(_formatWorkspace).toList();
+    var others = _prefType != null && _prefType!.isNotEmpty
+        ? _apiSpaces.where((s) => s['type'] != _prefType).toList()
+        : _apiSpaces;
+        
+    final uiSpaces = others.map(_formatWorkspace).toList();
+    if (uiSpaces.isEmpty && !_isLoading) return const SizedBox.shrink();
     
     return Padding(
       padding: const EdgeInsets.only(top: 24),
@@ -190,7 +242,7 @@ class _HomeScreenState extends State<HomeScreen> {
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text('Available Now',
+                Text(_prefType != null && _prefType!.isNotEmpty ? 'Explore Other Options' : 'Available Now',
                     style: GoogleFonts.inter(
                         fontSize: 18,
                         fontWeight: FontWeight.w600,
@@ -239,7 +291,11 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildRecommendedSection() {
-    final uiSpaces = _apiSpaces.map(_formatWorkspace).toList();
+    var matching = _prefType != null && _prefType!.isNotEmpty
+        ? _apiSpaces.where((s) => s['type'] == _prefType).toList()
+        : _apiSpaces;
+        
+    final uiSpaces = matching.map(_formatWorkspace).toList();
     if (uiSpaces.isEmpty && !_isLoading) return const SizedBox.shrink();
 
     return Padding(
@@ -261,7 +317,13 @@ class _HomeScreenState extends State<HomeScreen> {
                   child: _RecommendedItem(
                     name: space['name'] as String,
                     subtitle: 'Co-Working • ${space['location']}',
-                    rating: '4.9',
+                    rating: () {
+                      final raw = space['rating'] ?? space['avgRating'] ?? space['averageRating'];
+                      if (raw == null) return '';
+                      if (raw is double) return raw.toStringAsFixed(1);
+                      if (raw is int) return raw.toDouble().toStringAsFixed(1);
+                      return raw.toString();
+                    }(),
                     price: space['price'] as String,
                     imageUrl: space['image'] as String,
                     onTap: () => context.push('/space/${space['id']}'),
@@ -378,22 +440,22 @@ class _PromoCarouselState extends State<_PromoCarousel> {
       emoji: '🔥',
       tag: 'LIMITED OFFER',
       title: '20% OFF First Booking',
-      subtitle: 'Use code FIRST20 — valid till Jun 30, 2026.',
+      subtitle: 'Exclusive offers for first-time bookers.',
       accent: Color(0xFFFED7AA),
     ),
     _PromoCard(
       gradient: [Color(0xFF064E3B), Color(0xFF059669)],
       emoji: '💼',
       tag: 'HOT DESK PLAN',
-      title: 'From ₹150/hr',
-      subtitle: 'Flexible seating · High-speed WiFi · Day Pass ₹800.',
+      title: 'Flexible Hot Desks',
+      subtitle: 'Hourly, daily & monthly plans available.',
       accent: Color(0xFFA7F3D0),
     ),
     _PromoCard(
       gradient: [Color(0xFF312E81), Color(0xFF7C3AED)],
       emoji: '🏢',
       tag: 'PRIVATE CABIN',
-      title: 'From ₹500/hr',
+      title: 'Private Cabins',
       subtitle: 'Fully enclosed · 4K screens · Personal locker included.',
       accent: Color(0xFFDDD6FE),
     ),
@@ -401,7 +463,7 @@ class _PromoCarouselState extends State<_PromoCarousel> {
       gradient: [Color(0xFF78350F), Color(0xFFD97706)],
       emoji: '🏆',
       tag: 'COMMUNITY',
-      title: '1,200+ Professionals',
+      title: 'Growing Community',
       subtitle: 'Join India\'s fastest growing co-working community.',
       accent: Color(0xFFFEF3C7),
     ),
@@ -564,13 +626,76 @@ class _PromoCard extends StatelessWidget {
 // ─────────────────────────────────────────────────────────────────────────────
 // Space card used in Available Now horizontal list
 // ─────────────────────────────────────────────────────────────────────────────
-class _WhiteSpaceCard extends StatelessWidget {
+class _WhiteSpaceCard extends StatefulWidget {
   final Map<String, dynamic> space;
   const _WhiteSpaceCard({required this.space});
 
   @override
+  State<_WhiteSpaceCard> createState() => _WhiteSpaceCardState();
+}
+
+class _WhiteSpaceCardState extends State<_WhiteSpaceCard> {
+  int _currentPage = 0;
+  late PageController _pageController;
+  Timer? _autoPlayTimer;
+  late List<String> _images;
+
+  void _buildImages() {
+    _images = (widget.space['image'] as String)
+        .split(';')
+        .map((s) => s.trim())
+        .where((s) => s.isNotEmpty && s.startsWith('http'))
+        .toList();
+    if (_images.isEmpty) {
+      _images = ['https://images.unsplash.com/photo-1497366216548-37526070297c?w=800&q=80'];
+    }
+  }
+
+  void _startAutoPlay() {
+    _autoPlayTimer?.cancel();
+    _autoPlayTimer = null;
+    if (_images.length > 1) {
+      _autoPlayTimer = Timer.periodic(const Duration(seconds: 3), (_) {
+        if (!mounted) return;
+        final next = (_currentPage + 1) % _images.length;
+        _pageController.animateToPage(
+          next,
+          duration: const Duration(milliseconds: 400),
+          curve: Curves.easeInOut,
+        );
+      });
+    }
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _buildImages();
+    _pageController = PageController();
+    _startAutoPlay();
+  }
+
+  @override
+  void didUpdateWidget(_WhiteSpaceCard oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.space['image'] != widget.space['image']) {
+      _buildImages();
+      _currentPage = 0;
+      _pageController.jumpToPage(0);
+      _startAutoPlay();
+    }
+  }
+
+  @override
+  void dispose() {
+    _autoPlayTimer?.cancel();
+    _pageController.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final status = space['status'] as AvailabilityStatus;
+    final status = widget.space['status'] as AvailabilityStatus;
     Color dotColor;
     switch (status) {
       case AvailabilityStatus.available: dotColor = AppColors.available;
@@ -600,10 +725,76 @@ class _WhiteSpaceCard extends StatelessWidget {
               child: ClipRRect(
                 borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
                 child: Stack(fit: StackFit.expand, children: [
-                  Image.network(space['image'] as String,
+                  if (_images.length > 1)
+                    PageView.builder(
+                      controller: _pageController,
+                      itemCount: _images.length,
+                      onPageChanged: (index) {
+                        if (mounted) setState(() => _currentPage = index);
+                      },
+                      itemBuilder: (context, index) {
+                        return CachedNetworkImage(
+                          imageUrl: _images[index],
+                          fit: BoxFit.cover,
+                          placeholder: (_, __) => Container(color: AppColors.surfaceContainerHigh),
+                          errorWidget: (_, __, ___) => Container(color: AppColors.surfaceContainerHigh),
+                        );
+                      },
+                    )
+                  else
+                    CachedNetworkImage(
+                      imageUrl: _images[0],
                       fit: BoxFit.cover,
-                      errorBuilder: (_, __, ___) =>
-                          Container(color: AppColors.surfaceContainerHigh)),
+                      placeholder: (_, __) => Container(color: AppColors.surfaceContainerHigh),
+                      errorWidget: (_, __, ___) => Container(color: AppColors.surfaceContainerHigh),
+                    ),
+
+                  // Gradient overlay at bottom for dots visibility
+                  if (_images.length > 1)
+                    Positioned(
+                      bottom: 0,
+                      left: 0,
+                      right: 0,
+                      height: 30,
+                      child: DecoratedBox(
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            begin: Alignment.bottomCenter,
+                            end: Alignment.topCenter,
+                            colors: [
+                              Colors.black.withOpacity(0.45),
+                              Colors.transparent,
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+
+                  // Animated dot indicators
+                  if (_images.length > 1)
+                    Positioned(
+                      bottom: 8,
+                      left: 0,
+                      right: 0,
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: List.generate(
+                          _images.length,
+                          (index) => AnimatedContainer(
+                            duration: const Duration(milliseconds: 300),
+                            width: _currentPage == index ? 16 : 5,
+                            height: 5,
+                            margin: const EdgeInsets.symmetric(horizontal: 2),
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(3),
+                              color: _currentPage == index
+                                  ? Colors.white
+                                  : Colors.white.withOpacity(0.5),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
                   Positioned(
                     top: 8,
                     right: 8,
@@ -612,7 +803,7 @@ class _WhiteSpaceCard extends StatelessWidget {
                       decoration: BoxDecoration(
                           color: AppColors.primary,
                           borderRadius: BorderRadius.circular(8)),
-                      child: Text(space['price'] as String,
+                      child: Text(widget.space['price'] as String,
                           style: GoogleFonts.inter(
                               fontSize: 11,
                               fontWeight: FontWeight.w600,
@@ -643,7 +834,7 @@ class _WhiteSpaceCard extends StatelessWidget {
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       Expanded(
-                        child: Text(space['name'] as String,
+                        child: Text(widget.space['name'] as String,
                             style: GoogleFonts.inter(
                                 fontSize: 15,
                                 fontWeight: FontWeight.w600,
@@ -660,7 +851,7 @@ class _WhiteSpaceCard extends StatelessWidget {
                     const Icon(Icons.location_on, size: 12, color: Color(0xFF555555)),
                     const SizedBox(width: 2),
                     Expanded(
-                      child: Text(space['location'] as String,
+                      child: Text(widget.space['location'] as String,
                           style: GoogleFonts.inter(
                               fontSize: 12,
                               color: const Color(0xFF555555),
@@ -673,7 +864,7 @@ class _WhiteSpaceCard extends StatelessWidget {
                   SizedBox(
                     width: double.infinity,
                     child: ElevatedButton(
-                      onPressed: () => context.push('/space/${space['id']}'),
+                      onPressed: () => context.push('/space/${widget.space['id']}'),
                       style: ElevatedButton.styleFrom(
                         backgroundColor: AppColors.primaryContainer,
                         foregroundColor: Colors.white,
@@ -725,15 +916,29 @@ class _RecommendedItem extends StatelessWidget {
           border: Border.all(color: Colors.white.withOpacity(0.08)),
         ),
         child: Row(children: [
-          ClipRRect(
-            borderRadius: BorderRadius.circular(8),
-            child: Image.network(imageUrl,
-                width: 80,
-                height: 80,
-                fit: BoxFit.cover,
-                errorBuilder: (_, __, ___) => Container(
-                    width: 80, height: 80, color: AppColors.surfaceContainerHigh)),
-          ),
+            ClipRRect(
+              borderRadius: BorderRadius.circular(8),
+              child: () {
+                final imgUrls = imageUrl
+                    .split(';')
+                    .map((s) => s.trim())
+                    .where((s) => s.isNotEmpty)
+                    .toList();
+                final coverUrl = imgUrls.isNotEmpty
+                    ? imgUrls[0]
+                    : 'https://images.unsplash.com/photo-1497366216548-37526070297c?w=400&q=80';
+                return CachedNetworkImage(
+                  imageUrl: coverUrl,
+                  width: 80,
+                  height: 80,
+                  fit: BoxFit.cover,
+                  placeholder: (_, __) => Container(
+                      width: 80, height: 80, color: AppColors.surfaceContainerHigh),
+                  errorWidget: (_, __, ___) => Container(
+                      width: 80, height: 80, color: AppColors.surfaceContainerHigh),
+                );
+              }(),
+            ),
           const SizedBox(width: 12),
           Expanded(
             child: Column(
@@ -761,7 +966,9 @@ class _RecommendedItem extends StatelessWidget {
                         borderRadius: BorderRadius.circular(14),
                         border: Border.all(color: AppColors.background, width: 2)),
                     child: Center(
-                      child: Text(rating,
+                      child: rating.isEmpty
+                          ? const Icon(Icons.star, size: 12, color: Colors.white)
+                          : Text(rating,
                           style: GoogleFonts.inter(
                               fontSize: 9,
                               fontWeight: FontWeight.w700,

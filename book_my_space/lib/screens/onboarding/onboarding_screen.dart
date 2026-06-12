@@ -90,17 +90,14 @@ class _OnboardingScreenState extends State<OnboardingScreen>
               children: [
                 // Logo
                 Row(children: [
-                  Container(
+                  Image.asset(
+                    'assets/icon/coworklogo.png',
                     width: 36,
                     height: 36,
-                    decoration: BoxDecoration(
-                      color: AppColors.primaryContainer,
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    child: const Icon(Icons.workspaces, color: Colors.white, size: 20),
+                    fit: BoxFit.contain,
                   ),
                   const SizedBox(width: 8),
-                  Text('DeskHive',
+                  Text('CoWorkHQ',
                       style: GoogleFonts.inter(
                           fontSize: 16,
                           fontWeight: FontWeight.w700,

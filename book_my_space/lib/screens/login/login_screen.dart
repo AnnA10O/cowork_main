@@ -120,28 +120,15 @@ class _LoginScreenState extends State<LoginScreen> {
                       Column(
                         children: [
                           // Logo
-                          Container(
-                            width: 56,
-                            height: 56,
-                            decoration: BoxDecoration(
-                              color: AppColors.primaryContainer,
-                              borderRadius: BorderRadius.circular(12),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: AppColors.primaryContainer.withOpacity(0.3),
-                                  blurRadius: 20,
-                                ),
-                              ],
-                            ),
-                            child: const Icon(
-                              Icons.workspaces,
-                              color: Colors.white,
-                              size: 28,
-                            ),
+                          Image.asset(
+                            'assets/icon/coworklogo.png',
+                            width: 72,
+                            height: 72,
+                            fit: BoxFit.contain,
                           ),
                           const SizedBox(height: 16),
                           Text(
-                            'Book My Space',
+                            'CoWorkHQ',
                             style: GoogleFonts.inter(
                               fontSize: 28,
                               fontWeight: FontWeight.w700,

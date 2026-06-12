@@ -20,6 +20,10 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
   Map<String, int> _selectedExtrasQuantities = {};
   bool _isProcessing = false;
   final _couponController = TextEditingController();
+  Map<String, dynamic>? _workspaceDetails;
+  List<Map<String, dynamic>> _publicCoupons = [];
+  Map<String, dynamic>? _selectedCouponDetails;
+  String? _couponError;
 
   DateTime _selectedDate = DateTime.now();
   List<String> _selectedTimeSlots = [];
@@ -141,6 +145,33 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
     return 50.0;
   }
 
+  double get _discountAmount {
+    if (_selectedCouponDetails == null) return 0.0;
+    
+    final basePrice = _calculatedPlanPrice;
+    final minVal = _selectedCouponDetails!['minOrderValue'] != null 
+        ? double.tryParse(_selectedCouponDetails!['minOrderValue'].toString()) ?? 0.0
+        : 0.0;
+
+    if (minVal > 0 && basePrice < minVal) {
+      return 0.0; // Invalid, min value not met
+    }
+
+    double discount = 0.0;
+    final flat = _selectedCouponDetails!['discountFlat'];
+    final pct = _selectedCouponDetails!['discountPercent'];
+    
+    if (flat != null && flat.toString() != '0' && flat.toString().isNotEmpty) {
+      discount = double.tryParse(flat.toString()) ?? 0.0;
+    } else if (pct != null && pct.toString() != '0' && pct.toString().isNotEmpty) {
+      final p = double.tryParse(pct.toString()) ?? 0.0;
+      discount = basePrice * (p / 100);
+    }
+    
+    // Ensure discount doesn't exceed basePrice
+    return discount > basePrice ? basePrice : discount;
+  }
+
   double get _addonsTotal {
     double t = 0;
     for (var e in _extraServices) {
@@ -155,7 +186,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
     return t;
   }
 
-  double get _tax => ((_calculatedPlanPrice + _addonsTotal) * 0.1).roundToDouble();
+  double get _tax => (((_calculatedPlanPrice - _discountAmount) + _addonsTotal) * 0.1).roundToDouble();
 
   double get _calculatedPlanPrice {
     double planPrice = _basePrice;
@@ -180,7 +211,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
     return planPrice;
   }
 
-  double get _total => _calculatedPlanPrice + _addonsTotal + _tax;
+  double get _total => (_calculatedPlanPrice - _discountAmount) + _addonsTotal + _tax;
 
   String get _spaceName =>
       widget.bookingData['spaceName'] as String? ?? 'Workspace';
@@ -210,6 +241,11 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
     if (spaceId != null) {
       final details = await ApiClient.fetchWorkspaceDetail(spaceId);
       if (details != null) {
+        _workspaceDetails = details;
+        final couponsList = details['coupons'] as List?;
+        if (couponsList != null) {
+          _publicCoupons = couponsList.cast<Map<String, dynamic>>().toList();
+        }
         final plans = details['pricingPlans'] as List?;
         if (plans != null && plans.isNotEmpty) {
           final activePlans = plans.where((p) => p['isActive'] == true).cast<Map<String, dynamic>>().toList();
@@ -294,7 +330,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
       context: context,
       barrierDismissible: false,
       builder: (_) => _DemoPaymentDialog(
-        amount: 'INR ${_total.toStringAsFixed(2)}',
+        amount: '₹ ${_total.toStringAsFixed(2)}',
         method: _selectedPayment == 0
             ? 'UPI / GPay'
             : _selectedPayment == 1
@@ -465,6 +501,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
         endTime: endTimeStr,
         bookedSlots: bookedSlotsIso.isNotEmpty ? bookedSlotsIso : null,
         extras: extrasList.isNotEmpty ? extrasList : null,
+        couponCode: _couponController.text.isNotEmpty ? _couponController.text.trim().toUpperCase() : null,
         authToken: token,
       );
     }
@@ -1046,7 +1083,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
             icon: Icons.star_border, // default icon
             title: e['name'] ?? '',
             subtitle: e['description'] ?? '',
-            price: '+£${price.toStringAsFixed(0)}',
+            price: '+₹${price.toStringAsFixed(0)}',
             isEnabled: (_selectedExtrasQuantities[e['id']] ?? 0) > 0,
             onToggle: (v) {
               setState(() {
@@ -1076,46 +1113,108 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
           ),
         ),
         const SizedBox(height: 8),
+        if (_publicCoupons.isNotEmpty) ...[
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+            decoration: BoxDecoration(
+              color: AppColors.surfaceContainer,
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: DropdownButtonHideUnderline(
+              child: DropdownButton<Map<String, dynamic>>(
+                isExpanded: true,
+                hint: Text('Select a public coupon', style: GoogleFonts.inter(fontSize: 14, color: AppColors.onSurfaceVariant)),
+                value: _selectedCouponDetails,
+                icon: const Icon(Icons.arrow_drop_down, color: AppColors.primary),
+                items: [
+                  DropdownMenuItem(
+                    value: null,
+                    child: Text('None', style: GoogleFonts.inter(fontSize: 14, color: AppColors.onSurface)),
+                  ),
+                  ..._publicCoupons.map((c) {
+                    final isFlat = c['discountFlat'] != null && c['discountFlat'].toString() != '0';
+                    final discText = isFlat ? '₹${c['discountFlat']} OFF' : '${c['discountPercent']}% OFF';
+                    final minOrd = c['minOrderValue'] != null && c['minOrderValue'].toString() != '0' ? ' (Min: ₹${c['minOrderValue']})' : '';
+                    return DropdownMenuItem(
+                      value: c,
+                      child: Text('${c['code']} - $discText$minOrd', style: GoogleFonts.inter(fontSize: 14, color: AppColors.onSurface, fontWeight: FontWeight.w500)),
+                    );
+                  }).toList(),
+                ],
+                onChanged: (val) {
+                  setState(() {
+                    _selectedCouponDetails = val;
+                    if (val != null) {
+                      _couponController.text = val['code'];
+                      
+                      // Check min order value immediately to show warning if needed
+                      final minVal = val['minOrderValue'] != null ? double.tryParse(val['minOrderValue'].toString()) ?? 0.0 : 0.0;
+                      if (minVal > 0 && _calculatedPlanPrice < minVal) {
+                        _couponError = 'Minimum order value of ₹$minVal not met.';
+                      } else {
+                        _couponError = null;
+                      }
+                    } else {
+                      _couponController.clear();
+                      _couponError = null;
+                    }
+                  });
+                },
+              ),
+            ),
+          ),
+          const SizedBox(height: 10),
+        ],
         Row(
           children: [
             Expanded(
               child: TextField(
                 controller: _couponController,
-                style: GoogleFonts.inter(
-                    fontSize: 14, color: AppColors.onSurface),
+                style: GoogleFonts.inter(fontSize: 14, color: AppColors.onSurface),
                 decoration: InputDecoration(
-                  hintText: 'Apply coupon code',
-                  hintStyle: GoogleFonts.inter(
-                      color: AppColors.onSurfaceVariant, fontSize: 14),
-                  suffixIcon: const Icon(Icons.sell_outlined,
-                      color: AppColors.onSurfaceVariant),
+                  hintText: 'Apply private coupon code',
+                  hintStyle: GoogleFonts.inter(color: AppColors.onSurfaceVariant, fontSize: 14),
+                  suffixIcon: const Icon(Icons.sell_outlined, color: AppColors.onSurfaceVariant),
                   filled: true,
                   fillColor: AppColors.surfaceContainer,
+                  errorText: _couponError,
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(10),
                     borderSide: BorderSide.none,
                   ),
                 ),
+                onChanged: (val) {
+                  if (_selectedCouponDetails != null && _selectedCouponDetails!['code'] != val) {
+                    setState(() {
+                      _selectedCouponDetails = null;
+                      _couponError = null;
+                    });
+                  }
+                },
               ),
             ),
             const SizedBox(width: 10),
             ElevatedButton(
-              onPressed: () {},
+              onPressed: () {
+                // If they typed a code, we can't validate it locally if it's private.
+                // It will be sent to the backend on Pay Now.
+                if (_couponController.text.isNotEmpty && _selectedCouponDetails == null) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Private coupon will be validated during payment.'))
+                  );
+                }
+              },
               style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.primaryContainer,
                 minimumSize: Size.zero,
-                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
-                shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(10)),
+                backgroundColor: AppColors.primaryContainer,
+                foregroundColor: AppColors.onPrimaryContainer,
+                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                elevation: 0,
               ),
               child: Text(
                 'Apply',
-                style: GoogleFonts.inter(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w600,
-                    color: Colors.white),
+                style: GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.w600),
               ),
             ),
           ],
@@ -1179,16 +1278,18 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
       ),
       child: Column(
         children: [
-          _PriceLine('Base Price', '£${_basePrice.toStringAsFixed(2)}'),
+          _PriceLine('Base Price', '₹${_basePrice.toStringAsFixed(2)}'),
           ..._extraServices.where((e) => (_selectedExtrasQuantities[e['id']] ?? 0) > 0).map((e) {
             final p = e['price'];
             double price = 0;
             if (p is double) price = p;
             if (p is int) price = p.toDouble();
             if (p is String) price = double.tryParse(p) ?? 0;
-            return _PriceLine(e['name'], '£${price.toStringAsFixed(2)}');
+            return _PriceLine(e['name'], '₹${price.toStringAsFixed(2)}');
           }).toList(),
-          _PriceLine('Tax & Service (10%)', '£${_tax.toStringAsFixed(2)}'),
+          if (_discountAmount > 0)
+            _PriceLine('Discount', '-₹${_discountAmount.toStringAsFixed(2)}', isDiscount: true),
+          _PriceLine('Tax & Service (10%)', '₹${_tax.toStringAsFixed(2)}'),
           Divider(
               color: AppColors.outlineVariant.withOpacity(0.3), height: 20),
           Row(
@@ -1203,7 +1304,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                 ),
               ),
               Text(
-                '£${_total.toStringAsFixed(2)}',
+                '₹${_total.toStringAsFixed(2)}',
                 style: GoogleFonts.inter(
                   fontSize: 22,
                   fontWeight: FontWeight.w700,
@@ -1247,7 +1348,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                   ),
                 ),
                 Text(
-                  '£${_total.toStringAsFixed(2)}',
+                  '₹${_total.toStringAsFixed(2)}',
                   style: GoogleFonts.inter(
                     fontSize: 22,
                     fontWeight: FontWeight.w700,
@@ -1484,26 +1585,30 @@ class _PaymentOption extends StatelessWidget {
 class _PriceLine extends StatelessWidget {
   final String label;
   final String value;
-  const _PriceLine(this.label, this.value);
+  final bool isDiscount;
+  const _PriceLine(this.label, this.value, {this.isDiscount = false});
 
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4),
+      padding: const EdgeInsets.only(bottom: 8.0),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           Text(
             label,
             style: GoogleFonts.inter(
-                fontSize: 13, color: AppColors.onSurfaceVariant),
+              fontSize: 14,
+              color: isDiscount ? Colors.green[700] : AppColors.onSurfaceVariant,
+            ),
           ),
           Text(
             value,
             style: GoogleFonts.inter(
-                fontSize: 13,
-                fontWeight: FontWeight.w600,
-                color: AppColors.onSurface),
+              fontSize: 14,
+              fontWeight: FontWeight.w500,
+              color: isDiscount ? Colors.green[700] : AppColors.onSurface,
+            ),
           ),
         ],
       ),

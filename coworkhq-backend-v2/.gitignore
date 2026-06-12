@@ -3,3 +3,5 @@ dist/
 .env
 firebase-service-account.json
 *.tsbuildinfo
+
+.vercel

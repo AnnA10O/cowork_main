@@ -37,14 +37,14 @@ export class AdminService {
       this.prisma.user.count({ where: { role: 'CUSTOMER' } }),
       this.prisma.workspace.count(),
       this.prisma.booking.count(),
-      this.prisma.payment.aggregate({ where: { status: 'SUCCESS' }, _sum: { amount: true } }),
+      this.prisma.booking.aggregate({ where: { status: 'CONFIRMED' }, _sum: { finalAmount: true } }),
       this.prisma.platformFeePayment.aggregate({ where: { status: 'PENDING' }, _sum: { amount: true } }),
       this.prisma.issue.count({ where: { status: 'OPEN' } }),
     ]);
     return {
       users: { total: totalUsers, managers: totalManagers, customers: totalCustomers },
       workspaces: totalWorkspaces, bookings: totalBookings,
-      revenue: totalRevenue._sum.amount || 0,
+      revenue: totalRevenue._sum.finalAmount || 0,
       pendingPlatformFees: pendingFees._sum.amount || 0,
       openIssues,
     };

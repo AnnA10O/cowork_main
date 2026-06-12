@@ -1,93 +1,62 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
+import '../../data/api_client.dart';
 import '../../theme/app_colors.dart';
 
-class SpaceTypeScreen extends StatelessWidget {
+class SpaceTypeScreen extends StatefulWidget {
   const SpaceTypeScreen({super.key});
 
+  @override
+  State<SpaceTypeScreen> createState() => _SpaceTypeScreenState();
+}
+
+class _SpaceTypeScreenState extends State<SpaceTypeScreen> {
+  Map<String, int> _typeCounts = {};
+  bool _isLoading = true;
+
   static const _types = [
-    _SpaceType(
-      id: 'hot_desk',
-      label: 'Hot Desk',
-      subtitle: 'Flexible open desks, hourly or daily',
-      icon: Icons.desktop_windows_outlined,
-      filledIcon: Icons.desktop_windows,
-      count: '48 available',
-      color: Color(0xFF2563EB),
-      tag: 'Most Popular',
-    ),
-    _SpaceType(
-      id: 'private_cabin',
-      label: 'Private Cabin',
-      subtitle: 'Enclosed 1–2 person focus rooms',
-      icon: Icons.meeting_room_outlined,
-      filledIcon: Icons.meeting_room,
-      count: '22 available',
-      color: Color(0xFF7C3AED),
-      tag: null,
-    ),
-    _SpaceType(
-      id: 'meeting_room',
-      label: 'Meeting Room',
-      subtitle: 'Boardrooms for 4–20 people',
-      icon: Icons.groups_outlined,
-      filledIcon: Icons.groups,
-      count: '14 available',
-      color: Color(0xFF059669),
-      tag: null,
-    ),
-    _SpaceType(
-      id: 'shared_space',
-      label: 'Shared Space',
-      subtitle: 'Collaborative open-plan floors',
-      icon: Icons.people_outlined,
-      filledIcon: Icons.people,
-      count: '18 available',
-      color: Color(0xFFD97706),
-      tag: null,
-    ),
-    _SpaceType(
-      id: 'event_hall',
-      label: 'Event Hall',
-      subtitle: 'Large halls for 50–500 attendees',
-      icon: Icons.event_outlined,
-      filledIcon: Icons.event,
-      count: '6 available',
-      color: Color(0xFFDC2626),
-      tag: 'Premium',
-    ),
-    _SpaceType(
-      id: 'virtual_office',
-      label: 'Virtual Office',
-      subtitle: 'Business address & mail services',
-      icon: Icons.language_outlined,
-      filledIcon: Icons.language,
-      count: '12 plans',
-      color: Color(0xFF0284C7),
-      tag: null,
-    ),
-    _SpaceType(
-      id: 'podcast_studio',
-      label: 'Podcast Studio',
-      subtitle: 'Soundproof recording booths',
-      icon: Icons.mic_outlined,
-      filledIcon: Icons.mic,
-      count: '4 available',
-      color: Color(0xFFDB2777),
-      tag: 'New',
-    ),
-    _SpaceType(
-      id: 'training_room',
-      label: 'Training Room',
-      subtitle: 'Classroom-style for workshops',
-      icon: Icons.school_outlined,
-      filledIcon: Icons.school,
-      count: '8 available',
-      color: Color(0xFF0D9488),
-      tag: null,
-    ),
+    _SpaceType(id: 'hot_desk',       label: 'Hot Desk',        subtitle: 'Flexible open desks, hourly or daily',   icon: Icons.desktop_windows_outlined, filledIcon: Icons.desktop_windows, color: Color(0xFF2563EB), tag: 'Most Popular'),
+    _SpaceType(id: 'private_cabin',  label: 'Private Cabin',   subtitle: 'Enclosed 1–2 person focus rooms',        icon: Icons.meeting_room_outlined,    filledIcon: Icons.meeting_room,    color: Color(0xFF7C3AED), tag: null),
+    _SpaceType(id: 'meeting_room',   label: 'Meeting Room',    subtitle: 'Boardrooms for 4–20 people',             icon: Icons.groups_outlined,          filledIcon: Icons.groups,          color: Color(0xFF059669), tag: null),
+    _SpaceType(id: 'shared_space',   label: 'Shared Space',    subtitle: 'Collaborative open-plan floors',         icon: Icons.people_outlined,          filledIcon: Icons.people,          color: Color(0xFFD97706), tag: null),
+    _SpaceType(id: 'event_hall',     label: 'Event Hall',      subtitle: 'Large halls for 50–500 attendees',       icon: Icons.event_outlined,           filledIcon: Icons.event,           color: Color(0xFFDC2626), tag: 'Premium'),
+    _SpaceType(id: 'virtual_office', label: 'Virtual Office',  subtitle: 'Business address & mail services',       icon: Icons.language_outlined,        filledIcon: Icons.language,        color: Color(0xFF0284C7), tag: null),
+    _SpaceType(id: 'podcast_studio', label: 'Podcast Studio',  subtitle: 'Soundproof recording booths',            icon: Icons.mic_outlined,             filledIcon: Icons.mic,             color: Color(0xFFDB2777), tag: 'New'),
+    _SpaceType(id: 'training_room',  label: 'Training Room',   subtitle: 'Classroom-style for workshops',          icon: Icons.school_outlined,          filledIcon: Icons.school,          color: Color(0xFF0D9488), tag: null),
   ];
+
+  @override
+  void initState() {
+    super.initState();
+    _loadCounts();
+  }
+
+  Future<void> _loadCounts() async {
+    final results = await ApiClient.fetchWorkspaces();
+    if (results != null && mounted) {
+      final Map<String, int> counts = {};
+      for (final w in results) {
+        final type = w['type']?.toString() ?? '';
+        if (type.isNotEmpty) {
+          counts[type] = (counts[type] ?? 0) + 1;
+        }
+      }
+      setState(() {
+        _typeCounts = counts;
+        _isLoading = false;
+      });
+    } else {
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
+  String _countLabel(String typeId) {
+    if (_isLoading) return 'Loading...';
+    final count = _typeCounts[typeId] ?? 0;
+    if (count == 0) return 'None available';
+    return '$count available';
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -95,7 +64,6 @@ class SpaceTypeScreen extends StatelessWidget {
       backgroundColor: AppColors.background,
       body: CustomScrollView(
         slivers: [
-          // App bar
           SliverAppBar(
             pinned: true,
             backgroundColor: AppColors.background,
@@ -124,8 +92,6 @@ class SpaceTypeScreen extends StatelessWidget {
               ),
             ],
           ),
-
-          // Header
           SliverToBoxAdapter(
             child: Padding(
               padding: const EdgeInsets.fromLTRB(20, 8, 20, 0),
@@ -151,7 +117,6 @@ class SpaceTypeScreen extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(height: 20),
-                  // Quick search
                   GestureDetector(
                     onTap: () => context.push('/spaces?type=all'),
                     child: Container(
@@ -184,8 +149,6 @@ class SpaceTypeScreen extends StatelessWidget {
               ),
             ),
           ),
-
-          // Grid of space types
           SliverPadding(
             padding: const EdgeInsets.fromLTRB(20, 0, 20, 32),
             sliver: SliverGrid(
@@ -196,7 +159,10 @@ class SpaceTypeScreen extends StatelessWidget {
                 childAspectRatio: 0.9,
               ),
               delegate: SliverChildBuilderDelegate(
-                (context, i) => _SpaceTypeCard(type: _types[i]),
+                    (context, i) => _SpaceTypeCard(
+                  type: _types[i],
+                  count: _countLabel(_types[i].id),
+                ),
                 childCount: _types.length,
               ),
             ),
@@ -207,9 +173,12 @@ class SpaceTypeScreen extends StatelessWidget {
   }
 }
 
+// ---------------------------------------------------------------------------
+
 class _SpaceTypeCard extends StatelessWidget {
   final _SpaceType type;
-  const _SpaceTypeCard({required this.type});
+  final String count;
+  const _SpaceTypeCard({required this.type, required this.count}); // ← fixed
 
   @override
   Widget build(BuildContext context) {
@@ -225,12 +194,8 @@ class _SpaceTypeCard extends StatelessWidget {
         ),
         child: Stack(
           children: [
-            // Color accent
             Positioned(
-              top: 0,
-              left: 0,
-              right: 0,
-              height: 4,
+              top: 0, left: 0, right: 0, height: 4,
               child: Container(
                 decoration: BoxDecoration(
                   color: type.color,
@@ -241,15 +206,11 @@ class _SpaceTypeCard extends StatelessWidget {
                 ),
               ),
             ),
-
-            // Tag badge
             if (type.tag != null)
               Positioned(
-                top: 12,
-                right: 10,
+                top: 12, right: 10,
                 child: Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                   decoration: BoxDecoration(
                     color: type.color.withOpacity(0.15),
                     borderRadius: BorderRadius.circular(6),
@@ -266,17 +227,13 @@ class _SpaceTypeCard extends StatelessWidget {
                   ),
                 ),
               ),
-
-            // Content
             Padding(
               padding: const EdgeInsets.fromLTRB(14, 20, 14, 14),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Icon
                   Container(
-                    width: 48,
-                    height: 48,
+                    width: 48, height: 48,
                     decoration: BoxDecoration(
                       color: type.color.withOpacity(0.12),
                       borderRadius: BorderRadius.circular(12),
@@ -309,8 +266,7 @@ class _SpaceTypeCard extends StatelessWidget {
                   Row(
                     children: [
                       Container(
-                        width: 6,
-                        height: 6,
+                        width: 6, height: 6,
                         decoration: const BoxDecoration(
                           color: AppColors.available,
                           shape: BoxShape.circle,
@@ -319,7 +275,7 @@ class _SpaceTypeCard extends StatelessWidget {
                       const SizedBox(width: 4),
                       Flexible(
                         child: Text(
-                          type.count,
+                          count, // ← dynamic
                           style: GoogleFonts.inter(
                             fontSize: 11,
                             fontWeight: FontWeight.w600,
@@ -329,8 +285,7 @@ class _SpaceTypeCard extends StatelessWidget {
                         ),
                       ),
                       const Spacer(),
-                      Icon(Icons.arrow_forward_ios,
-                          size: 12, color: type.color),
+                      Icon(Icons.arrow_forward_ios, size: 12, color: type.color),
                     ],
                   ),
                 ],
@@ -343,13 +298,14 @@ class _SpaceTypeCard extends StatelessWidget {
   }
 }
 
+// ---------------------------------------------------------------------------
+
 class _SpaceType {
   final String id;
   final String label;
   final String subtitle;
   final IconData icon;
   final IconData filledIcon;
-  final String count;
   final Color color;
   final String? tag;
 
@@ -359,7 +315,6 @@ class _SpaceType {
     required this.subtitle,
     required this.icon,
     required this.filledIcon,
-    required this.count,
     required this.color,
     this.tag,
   });

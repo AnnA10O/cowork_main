@@ -8,7 +8,7 @@ import { BookingsService } from './bookings.service';
 import { Roles } from '../common/decorators';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 
-// ── DTOs ─────────────────────────────────────────────────────────────
+// ── DTOs ───────────────────────────────────────────────────────────── 
 
 export class CreateBookingDto {
   @IsString()
@@ -100,6 +100,13 @@ export class BookingsController {
   @Get('manager')
   getManagerBookings(@CurrentUser() user: any, @Query('status') status?: string) {
     return this.bookingsService.getManagerBookings(user.managerProfile.id, status);
+  }
+
+  /** PATCH /bookings/checkin-by-code/:code — Manager/Staff scans QR to check in customer */
+  @Roles(Role.MANAGER, Role.STAFF, Role.ADMIN)
+  @Patch('checkin-by-code/:code')
+  checkinByCode(@CurrentUser() user: any, @Param('code') code: string) {
+    return this.bookingsService.checkinByCode(code, user);
   }
 
   /** GET /bookings/:id */

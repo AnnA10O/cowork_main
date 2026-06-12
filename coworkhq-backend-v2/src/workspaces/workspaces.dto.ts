@@ -152,6 +152,14 @@ export class CreateCouponDto {
 
   @IsString()
   validUntil: string;
+
+  @IsNumber()
+  @IsOptional()
+  minOrderValue?: number;
+
+  @IsBoolean()
+  @IsOptional()
+  isPublic?: boolean;
 }
 
 export class AssignStaffDto {
@@ -167,3 +175,4 @@ export class GenerateStaffCodeDto {
   @IsOptional()
   note?: string;
 }
+

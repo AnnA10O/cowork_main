@@ -153,6 +153,17 @@ export class AuthService {
     return { message: 'Password changed successfully' };
   }
 
+  // ── Update Profile ───────────────────────────────────────────────
+
+  async updateProfile(userId: string, name: string) {
+    const user = await this.prisma.user.update({
+      where: { id: userId },
+      data: { name },
+      select: { id: true, name: true, email: true, role: true },
+    });
+    return user;
+  }
+
   // ── Firebase Authentication ───────────────────────────────────────
 
   private ensureFirebaseInitialized(): boolean {

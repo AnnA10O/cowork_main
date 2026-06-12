@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>CoWork HQ — Manager Portal</title>
-  <meta name="description" content="CoWork HQ Manager Portal — Manage workspaces, bookings, payments, staff, and analytics from one powerful dashboard.">
+  <meta name="description" content="CoWork HQ Manager Portal â€” Manage workspaces, bookings, payments, staff, and analytics from one powerful dashboard.">
 
   <!-- Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -16,6 +16,10 @@
 
   <!-- App Styles -->
   <link rel="stylesheet" href="css/styles.css">
+
+  <!-- Leaflet Map -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
 </head>
 <body>
 
@@ -69,6 +73,9 @@
         <div class="nav-ic-btn" id="shortcuts-toggle-btn" onclick="App.toggleShortcuts()" title="Toggle Keyboard Shortcuts">
           <i class="ti ti-keyboard"></i>
         </div>
+        <div class="nav-ic-btn" id="tour-btn" onclick="App.startTour()" title="Start Tour">
+          <i class="ti ti-help"></i>
+        </div>
         <div class="nav-ic-btn" id="theme-btn" onclick="App.toggleTheme()" title="Toggle Theme">
           <i class="ti ti-sun" id="theme-icon"></i>
         </div>
@@ -87,7 +94,7 @@
   ════════════════════════════════ -->
   <script src="config.js"></script>
   <script src="js/api.js"></script>
-  <script src="js/app.js?v=2"></script>
+  <script src="js/app.js?v=2" charset="utf-8"></script>
   <script>
     // Bootstrap the application
     document.addEventListener('DOMContentLoaded', () => App.init());

@@ -19,15 +19,17 @@ export class WorkspacesService {
   async findAll(query: {
     city?: string;
     search?: string;
+    type?: string;
     page?: number;
     limit?: number;
   }) {
-    const { city, search, page = 1, limit = 20 } = query;
+    const { city, search, type, page = 1, limit = 20 } = query;
     const skip = (page - 1) * limit;
 
     const where: any = { status: WorkspaceStatus.ACTIVE };
     if (city)   where.city = { contains: city, mode: 'insensitive' };
     if (search) where.name = { contains: search, mode: 'insensitive' };
+    if (type)   where.type = type;
 
     const [workspaces, total] = await Promise.all([
       this.prisma.workspace.findMany({
@@ -35,8 +37,8 @@ export class WorkspacesService {
         skip: (page - 1) * limit,
         take: parseInt(limit.toString(), 10) || 10,
         include: {
-          images: { orderBy: { order: 'asc' }, take: 1 },
-          pricingPlans: { where: { isActive: true } },
+          images: { orderBy: { order: 'asc' } },
+          pricingPlans: { orderBy: { type: 'asc' } },
           workingHours: true,
           _count: { select: { desks: true } },
         },
@@ -53,9 +55,10 @@ export class WorkspacesService {
       where: { id },
       include: {
         images: { orderBy: { order: 'asc' } },
-        pricingPlans: { where: { isActive: true } },
+        pricingPlans: { orderBy: { type: 'asc' } },
         workingHours: true,
         desks: { where: { isActive: true }, orderBy: { deskNumber: 'asc' } },
+          coupons: { where: { isPublic: true, isActive: true, validUntil: { gte: new Date() } }, select: { code: true, discountPercent: true, discountFlat: true, minOrderValue: true } },
         feedbacks: {
           include: { customer: { include: { user: { select: { name: true } } } } },
           orderBy: { createdAt: 'desc' }, take: 10,
@@ -427,7 +430,9 @@ export class WorkspacesService {
         code: dto.code.toUpperCase(),
         discountPercent: dto.discountPercent,
         discountFlat: dto.discountFlat,
-        maxUses: dto.maxUses || 100,
+          minOrderValue: dto.minOrderValue,
+          isPublic: dto.isPublic || false,
+          maxUses: dto.maxUses || 100,
         validFrom: new Date(dto.validFrom),
         validUntil: new Date(dto.validUntil),
       },
@@ -487,12 +492,12 @@ export class WorkspacesService {
       this.prisma.booking.count({
         where: { workspace: { managerId }, status: 'PENDING' },
       }),
-      this.prisma.payment.aggregate({
+      this.prisma.booking.aggregate({
         where: {
-          booking: { workspace: { managerId } },
-          status: 'SUCCESS',
+          workspace: { managerId },
+          status: 'CONFIRMED',
         },
-        _sum: { amount: true },
+        _sum: { finalAmount: true },
       }),
     ]);
 
@@ -500,7 +505,7 @@ export class WorkspacesService {
       workspaces,
       totalBookings,
       pendingBookings,
-      totalRevenue: revenue._sum.amount || 0,
+      totalRevenue: revenue._sum.finalAmount || 0,
     };
   }
 
@@ -536,3 +541,5 @@ export class WorkspacesService {
     return workspace;
   }
 }
+
+

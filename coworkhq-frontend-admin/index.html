@@ -1,0 +1,1470 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <script src="config.js"></script>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1.0">
+  <title>CoWork HQ — Admin Portal</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css">
+  <style>
+    /* ── SHARED TOKENS (mirrors manager portal styles.css) ── */
+    *{box-sizing:border-box;margin:0;padding:0}
+    :root{
+      --bg:#0f1117;--bg2:#12151f;--bg3:#1a1f2e;
+      --border:#1e2433;--border2:#2a3146;
+      --txt:#e2e8f0;--txt2:#94a3b8;--txt3:#4a5568;
+      --accent:#4f46e5;--accent2:#818cf8;
+      --green:#34d399;--red:#f87171;--yellow:#fbbf24;
+    }
+    .light-mode{
+      --bg:#f0f4ff;--bg2:#ffffff;--bg3:#e8edf8;
+      --border:#d1d9ef;--border2:#bbc5df;
+      --txt:#0f172a;--txt2:#334155;--txt3:#64748b;
+    }
+    /* light-mode terminal overrides */
+    .light-mode .home-right{background:#f8faff;border-color:#d1d9ef}
+    .light-mode .term-bar{background:#eef1fa;border-color:#d1d9ef}
+    .light-mode .term-title{color:#64748b}
+    .light-mode .term-feed{background:#f8faff}
+    .light-mode .term-feed::-webkit-scrollbar-thumb{background:#bbc5df}
+    .light-mode .term-shell{background:#eef7f1;border-color:rgba(22,163,74,.25)}
+    .light-mode .term-input-row{background:#eef7f1;border-color:rgba(22,163,74,.2)}
+    .light-mode .term-prompt,.light-mode .term-prompt-static{color:#16a34a}
+    .light-mode .term-time{color:#94a3b8}
+    .light-mode .term-msg{color:#1e293b}
+    .light-mode .term-inp{color:#0f172a;caret-color:#16a34a}
+    .light-mode .term-msg .t-green{color:#15803d}
+    .light-mode .term-msg .t-red{color:#dc2626}
+    .light-mode .term-msg .t-yellow{color:#b45309}
+    .light-mode .term-msg .t-blue{color:#4338ca}
+    .light-mode .term-msg .t-cyan{color:#0369a1}
+    .light-mode .term-msg .t-white{color:#0f172a;font-weight:700}
+
+    body{font-family:'Plus Jakarta Sans','Segoe UI',sans-serif;background:var(--bg);color:var(--txt);transition:background .3s,color .3s}
+    .screen{display:none;min-height:100vh}
+    .screen.active{display:flex;flex-direction:column}
+
+    /* ── AUTH ── */
+    #auth-screen{background:var(--bg);align-items:center;justify-content:center;padding:24px;position:relative}
+    .auth-bg{position:absolute;inset:0;background:radial-gradient(ellipse at 30% 20%,rgba(79,70,229,.18) 0%,transparent 60%),radial-gradient(ellipse at 80% 80%,rgba(124,58,237,.12) 0%,transparent 50%);pointer-events:none}
+    .auth-card{background:var(--bg2);border:0.5px solid var(--border);border-radius:20px;padding:32px 28px;width:100%;max-width:380px;position:relative;z-index:1;box-shadow:0 24px 60px rgba(0,0,0,.4)}
+    .auth-logo{display:flex;align-items:center;gap:10px;justify-content:center;margin-bottom:24px}
+    .auth-logo-sq{width:40px;height:40px;background:var(--accent);border-radius:11px;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:800;color:#fff}
+    .auth-logo-name{font-size:16px;font-weight:800;color:var(--txt)}
+    .auth-logo-sub{font-size:10px;color:var(--txt3);margin-top:1px}
+    .auth-title{font-size:22px;font-weight:800;color:var(--txt);text-align:center;margin-bottom:4px}
+    .auth-sub{font-size:12px;color:var(--txt3);text-align:center;margin-bottom:22px}
+    .auth-admin-badge{display:flex;align-items:center;justify-content:center;gap:6px;margin-bottom:18px;background:rgba(79,70,229,.12);border:0.5px solid rgba(79,70,229,.3);border-radius:8px;padding:7px 12px;font-size:11px;font-weight:700;color:var(--accent2)}
+    .auth-field{margin-bottom:13px}
+    .auth-field label{display:block;font-size:10px;font-weight:700;color:var(--txt3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:5px}
+    .auth-field input{width:100%;padding:10px 12px;background:var(--bg3);border:0.5px solid var(--border2);border-radius:9px;font-size:13px;color:var(--txt);outline:none;font-family:inherit;transition:border-color .15s}
+    .auth-field input:focus{border-color:var(--accent)}
+    .auth-btn{width:100%;padding:11px;background:var(--accent);color:#fff;border:none;border-radius:9px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;transition:background .15s;margin-top:2px}
+    .auth-btn:hover{background:#4338ca}
+    .auth-btn:active{transform:scale(.98)}
+    #auth-err{font-size:11px;color:var(--red);text-align:center;min-height:16px;margin-bottom:6px}
+
+    /* ── NAV ── */
+    .nav{height:56px;background:var(--bg2);border-bottom:0.5px solid var(--border);display:flex;align-items:center;padding:0 18px;gap:10px;position:relative;z-index:100;flex-shrink:0;transition:background .3s,border-color .3s}
+    .nav-logo{display:flex;align-items:center;gap:9px;cursor:pointer;flex-shrink:0}
+    .nav-logo-sq{width:30px;height:30px;background:var(--accent);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;color:#fff}
+    .nav-logo-text{font-size:13px;font-weight:700;color:var(--txt)}
+    .nav-logo-sub{font-size:9px;color:var(--txt3)}
+    .super-chip{font-size:9px;font-weight:800;background:linear-gradient(135deg,var(--accent),#7c3aed);color:#fff;padding:2px 8px;border-radius:100px;letter-spacing:.5px;text-transform:uppercase;flex-shrink:0}
+    .nav-search{flex:1;max-width:360px;margin:0 auto;position:relative}
+    .nav-search input{width:100%;background:var(--bg3);border:0.5px solid var(--border2);border-radius:100px;padding:7px 14px 7px 32px;font-size:12px;color:var(--txt);outline:none;font-family:inherit;transition:all .2s}
+    .nav-search input::placeholder{color:var(--txt3)}
+    .nav-si{position:absolute;left:10px;top:50%;transform:translateY(-50%);color:var(--txt3);font-size:13px}
+    .nav-r{display:flex;align-items:center;gap:6px;margin-left:auto;position:relative}
+    .nav-ic-btn{width:32px;height:32px;background:var(--bg3);border:0.5px solid var(--border2);border-radius:9px;display:flex;align-items:center;justify-content:center;cursor:pointer;color:var(--txt2);font-size:15px;position:relative;transition:all .15s}
+    .nav-ic-btn:hover{border-color:var(--accent);color:var(--accent2);background:rgba(79,70,229,.08)}
+    .nav-ic-btn:active{transform:scale(.92)}
+    .nd{position:absolute;top:4px;right:4px;width:7px;height:7px;background:var(--red);border-radius:50%;border:1.5px solid var(--bg2)}
+    /* notification count badge */
+    .notif-badge{position:absolute;top:-4px;right:-4px;min-width:16px;height:16px;background:var(--red);border-radius:8px;font-size:9px;font-weight:800;color:#fff;display:flex;align-items:center;justify-content:center;padding:0 3px;border:1.5px solid var(--bg2)}
+    .nav-av{width:32px;height:32px;background:var(--accent);border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:#fff;cursor:pointer;transition:all .15s;user-select:none}
+    .nav-av:hover{opacity:.85}
+    .nav-av:active{transform:scale(.92)}
+
+    /* ── DROPDOWN ── */
+    .user-dd{position:absolute;top:42px;right:0;width:210px;background:var(--bg2);border:0.5px solid var(--border);border-radius:12px;box-shadow:0 8px 32px rgba(0,0,0,.4);z-index:200;overflow:hidden;animation:ddFade .15s ease}
+    @keyframes ddFade{from{opacity:0;transform:translateY(-6px)}to{opacity:1;transform:translateY(0)}}
+    .dd-head{padding:12px 14px;border-bottom:0.5px solid var(--border);display:flex;align-items:center;gap:9px}
+    .dd-av{width:34px;height:34px;background:var(--accent);border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:#fff;flex-shrink:0}
+    .dd-name{font-size:12px;font-weight:700;color:var(--txt)}
+    .dd-email{font-size:10px;color:var(--txt3);margin-top:1px}
+    .dd-item{display:flex;align-items:center;gap:9px;padding:9px 14px;cursor:pointer;font-size:12px;font-weight:600;color:var(--txt2);transition:background .12s}
+    .dd-item:hover{background:var(--bg3);color:var(--txt)}
+    .dd-item i{font-size:14px;width:16px;text-align:center}
+    .dd-sep{height:0.5px;background:var(--border);margin:2px 0}
+    .dd-red{color:var(--red)!important}
+
+    /* ── CONTENT ── */
+    .content{flex:1;overflow-y:auto;background:var(--bg);transition:background .3s}
+    ::-webkit-scrollbar{width:4px}
+    ::-webkit-scrollbar-thumb{background:var(--border2);border-radius:4px}
+
+    /* ── HOME LAYOUT ── */
+    .home{display:flex;flex-direction:column;height:calc(100vh - 56px);overflow:hidden}
+    .home-header{padding:16px 24px 0}
+    .home-inner{display:flex;gap:0;flex:1;overflow:hidden}
+    .home-left{flex:1;padding:16px 20px 20px 24px;overflow-y:auto;display:flex;flex-direction:column;gap:0}
+    .home-right{width:380px;flex-shrink:0;border-left:0.5px solid var(--border);display:flex;flex-direction:column;background:var(--bg2);transition:background .3s}
+    @media(max-width:900px){
+      .home-inner{flex-direction:column}
+      .home-right{width:100%;border-left:none;border-top:0.5px solid var(--border);height:320px}
+    }
+
+    /* ── SECTION LABEL ── */
+    .sec-lbl{font-size:10px;font-weight:800;color:var(--txt3);text-transform:uppercase;letter-spacing:1px;margin-bottom:12px}
+
+    /* ── ICON GRID — app-style ── */
+    .icon-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(88px,1fr));gap:12px;margin-bottom:24px}
+    .icon-btn{display:flex;flex-direction:column;align-items:center;gap:7px;cursor:pointer;transition:transform .15s;-webkit-tap-highlight-color:transparent}
+    .icon-btn:hover{transform:translateY(-3px)}
+    .icon-btn:active{transform:scale(.94)}
+    .icon-sq{width:64px;height:64px;border-radius:18px;display:flex;align-items:center;justify-content:center;position:relative;font-size:26px;box-shadow:0 4px 16px rgba(0,0,0,.3)}
+    .icon-badge{position:absolute;top:-5px;right:-5px;min-width:18px;height:18px;background:var(--red);border-radius:9px;font-size:9px;font-weight:800;color:#fff;display:flex;align-items:center;justify-content:center;padding:0 4px;border:2px solid var(--bg2)}
+    .icon-lbl{font-size:12px;font-weight:700;color:var(--txt);text-align:center;line-height:1.3}
+    .icon-sub{font-size:10px;color:var(--txt3);text-align:center}
+
+    /* ── DETAIL MODULE ── */
+    .detail{display:flex;flex-direction:column;min-height:calc(100vh - 56px);animation:fadeUp .22s ease}
+    @keyframes fadeUp{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+    @keyframes spin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
+    .dtop{padding:12px 18px;border-bottom:0.5px solid var(--border);background:var(--bg2);display:flex;align-items:center;gap:10px;flex-shrink:0;transition:background .3s}
+    .back{width:30px;height:30px;background:var(--bg3);border:0.5px solid var(--border2);border-radius:9px;display:flex;align-items:center;justify-content:center;cursor:pointer;color:var(--txt2);font-size:14px;transition:all .15s;flex-shrink:0}
+    .back:hover{border-color:var(--accent);color:var(--accent2);background:rgba(79,70,229,.08)}
+    .back:active{transform:scale(.92)}
+    .dtop-sq{width:34px;height:34px;border-radius:10px;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:17px}
+    .dtop-title{font-size:14px;font-weight:800;color:var(--txt)}
+    .dtop-sub{font-size:10px;color:var(--txt3);margin-top:1px}
+    .dbtns{display:flex;gap:6px;margin-left:auto;flex-wrap:wrap;align-items:center}
+    .dbody{padding:16px 18px;display:flex;flex-direction:column;gap:12px;overflow-y:auto}
+
+    /* ── GRIDS ── */
+    .g2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+    .g3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px}
+    .g4{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+    @media(max-width:600px){.g4{grid-template-columns:1fr 1fr}.g3{grid-template-columns:1fr 1fr}.g2{grid-template-columns:1fr}.icon-grid{grid-template-columns:repeat(auto-fill,minmax(78px,1fr))}}
+
+    /* ── STAT CARD ── */
+    .sc{background:var(--bg2);border:0.5px solid var(--border);border-radius:10px;padding:13px 14px;transition:background .3s}
+    .sc-lb{font-size:9px;font-weight:700;color:var(--txt3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:5px}
+    .sc-v{font-size:18px;font-weight:800;letter-spacing:-1px}
+    .sc-s{font-size:10px;color:var(--txt3);margin-top:3px}
+
+    /* ── BUTTONS ── */
+    .dbtn{padding:7px 13px;border-radius:9px;font-size:11px;font-weight:700;cursor:pointer;border:0.5px solid var(--border2);background:var(--bg3);color:var(--txt2);transition:all .15s;font-family:inherit;display:inline-flex;align-items:center;gap:5px}
+    .dbtn:hover{border-color:var(--accent2);color:var(--txt);background:rgba(79,70,229,.07)}
+    .dbtn:active{transform:scale(.95)}
+    .dbtn.pr{background:var(--accent);border-color:var(--accent);color:#fff}
+    .dbtn.pr:hover{background:#4338ca;border-color:#4338ca}
+    .dbtn.danger{background:rgba(248,113,113,.1);border-color:rgba(248,113,113,.3);color:var(--red)}
+    .dbtn.success{background:rgba(52,211,153,.1);border-color:rgba(52,211,153,.3);color:var(--green)}
+    .act-btn{padding:3px 8px;border-radius:6px;font-size:9px;font-weight:700;cursor:pointer;font-family:inherit;border:0.5px solid transparent;transition:all .15s}
+    .act-btn:active{transform:scale(.93)}
+    .act-green{background:rgba(52,211,153,.12);color:var(--green);border-color:rgba(52,211,153,.3)}
+    .act-red{background:rgba(248,113,113,.1);color:var(--red);border-color:rgba(248,113,113,.3)}
+    .act-blue{background:rgba(79,70,229,.12);color:var(--accent2);border-color:rgba(79,70,229,.3)}
+    .act-warn{background:rgba(251,191,36,.1);color:var(--yellow);border-color:rgba(251,191,36,.3)}
+
+    /* ── TABLE ── */
+    .tbl{background:var(--bg2);border:0.5px solid var(--border);border-radius:10px;overflow:hidden}
+    .tbl-bar{display:flex;align-items:center;justify-content:space-between;padding:10px 13px;border-bottom:0.5px solid var(--border)}
+    .tbl-ttl{font-size:11px;font-weight:800;color:var(--txt)}
+    .tbl-wrap{overflow-x:auto}
+    .thead{display:grid;padding:8px 13px;background:var(--bg3);font-size:9px;font-weight:700;color:var(--txt3);text-transform:uppercase;letter-spacing:.5px;border-bottom:0.5px solid var(--border);position:sticky;top:0;z-index:1}
+    .trow{display:grid;padding:10px 13px;border-bottom:0.5px solid var(--border);align-items:center;transition:background .12s;cursor:default}
+    .trow:last-child{border-bottom:none}
+    .trow:hover{background:var(--bg3)}
+    .cn{font-size:11px;font-weight:700;color:var(--txt)}
+    .ct{font-size:11px;color:var(--txt2)}
+
+    /* ── BADGES ── */
+    .badge{display:inline-flex;align-items:center;gap:3px;padding:2px 7px;border-radius:100px;font-size:9px;font-weight:700}
+    .bs{background:rgba(52,211,153,.12);color:#34d399;border:0.5px solid rgba(52,211,153,.25)}
+    .bw{background:rgba(251,191,36,.12);color:#fbbf24;border:0.5px solid rgba(251,191,36,.25)}
+    .be{background:rgba(248,113,113,.12);color:#f87171;border:0.5px solid rgba(248,113,113,.25)}
+    .bi{background:rgba(129,140,248,.12);color:#818cf8;border:0.5px solid rgba(129,140,248,.25)}
+    .bp{background:rgba(79,70,229,.15);color:var(--accent2);border:0.5px solid rgba(79,70,229,.3)}
+
+    /* ── CHART / CARD ── */
+    .cc{background:var(--bg2);border:0.5px solid var(--border);border-radius:10px;padding:13px;transition:background .3s}
+    .cc-ttl{font-size:11px;font-weight:800;color:var(--txt);margin-bottom:10px}
+    .prog{margin-bottom:7px}
+    .pr-row{display:flex;justify-content:space-between;margin-bottom:3px}
+    .pn{font-size:10px;color:var(--txt2);font-weight:600}
+    .pp{font-size:10px;color:var(--txt);font-weight:700}
+    .pt{height:5px;background:var(--border);border-radius:3px;overflow:hidden}
+    .pf{height:100%;border-radius:3px}
+
+    /* ── KBD ── */
+    .kbd{display:inline-flex;align-items:center;justify-content:center;min-width:22px;height:22px;padding:0 5px;background:var(--bg);border:0.5px solid var(--border2);border-radius:5px;font-size:11px;font-weight:700;color:var(--accent2);flex-shrink:0}
+    .key-hint{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:var(--bg2);border:0.5px solid var(--border2);border-radius:9px;padding:8px 14px;font-size:12px;font-weight:700;color:var(--txt2);z-index:9999;display:flex;align-items:center;gap:7px;box-shadow:0 8px 24px rgba(0,0,0,.4);animation:fadeUp .2s ease}
+
+    /* ── LIVE DOT ── */
+    .live-dot{display:inline-block;width:7px;height:7px;background:var(--green);border-radius:50%;animation:pulse 2s infinite;margin-right:4px}
+    @keyframes pulse{0%,100%{box-shadow:0 0 0 0 rgba(52,211,153,.4)}50%{box-shadow:0 0 0 5px rgba(52,211,153,0)}}
+
+    /* ── MANAGER CARD ── */
+    .mgr-card{background:var(--bg2);border:0.5px solid var(--border);border-radius:10px;padding:14px;display:flex;gap:11px;align-items:flex-start;transition:all .15s}
+    .mgr-card:hover{border-color:var(--border2);transform:translateY(-1px);box-shadow:0 4px 16px rgba(0,0,0,.2)}
+
+    /* ── SKELETON ── */
+    .skel{background:linear-gradient(90deg,var(--bg3) 25%,var(--border) 50%,var(--bg3) 75%);background-size:200% 100%;animation:shimmer 1.4s infinite;border-radius:6px}
+    @keyframes shimmer{0%{background-position:200% 0}100%{background-position:-200% 0}}
+    .skel-card{background:var(--bg2);border:0.5px solid var(--border);border-radius:10px;padding:14px}
+
+    /* ── EMPTY STATE ── */
+    .empty-state{text-align:center;padding:64px 24px;display:flex;flex-direction:column;align-items:center;gap:12px}
+    .empty-state-icon{font-size:48px;opacity:.35}
+    .empty-state-title{font-size:14px;font-weight:800;color:var(--txt)}
+    .empty-state-sub{font-size:12px;color:var(--txt3);max-width:280px;line-height:1.6}
+
+    /* ── TOAST STACK ── */
+    .toast-wrap{position:fixed;bottom:16px;right:16px;display:flex;flex-direction:column;gap:6px;z-index:9000}
+    .toast{background:var(--bg2);border:0.5px solid var(--border2);border-radius:10px;padding:10px 14px;font-size:12px;font-weight:600;color:var(--txt);box-shadow:0 8px 24px rgba(0,0,0,.4);animation:fadeUp .2s ease;display:flex;align-items:center;gap:8px;max-width:300px;transition:opacity .3s,transform .3s}
+    .toast.toast-out{opacity:0;transform:translateX(20px)}
+
+    /* ── SHORTCUTS MODAL ── */
+    .sc-modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.6);backdrop-filter:blur(4px);z-index:1000;display:flex;align-items:center;justify-content:center;animation:fadeUp .2s ease}
+    .sc-modal{background:var(--bg2);border:0.5px solid var(--border);border-radius:16px;padding:20px;width:90%;max-width:440px;box-shadow:0 24px 60px rgba(0,0,0,.5)}
+    .sc-modal-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}
+    .sc-modal-title{font-size:14px;font-weight:800;color:var(--txt);display:flex;align-items:center;gap:7px}
+    .sc-modal-close{width:26px;height:26px;background:var(--bg3);border-radius:7px;display:flex;align-items:center;justify-content:center;cursor:pointer;color:var(--txt2);font-size:12px;transition:all .15s}
+    .sc-modal-close:hover{border:0.5px solid var(--border2);color:var(--txt)}
+    .sc-modal-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:6px}
+    .sc-key{display:flex;align-items:center;gap:8px;padding:8px 10px;background:var(--bg3);border-radius:8px;cursor:pointer;transition:background .15s}
+    .sc-key:hover{background:var(--border)}
+    .sc-key-label{font-size:11px;font-weight:600;color:var(--txt2)}
+
+    /* ── SUSPEND / CONFIRM MODAL ── */
+    .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.65);backdrop-filter:blur(6px);z-index:2000;display:flex;align-items:center;justify-content:center;animation:fadeUp .18s ease}
+    .modal-box{background:var(--bg2);border:0.5px solid var(--border2);border-radius:16px;padding:0;width:90%;max-width:440px;box-shadow:0 24px 60px rgba(0,0,0,.5);overflow:hidden;animation:fadeUp .22s ease}
+    .modal-head{padding:16px 18px 14px;border-bottom:0.5px solid var(--border);display:flex;align-items:center;gap:10px}
+    .modal-icon{width:34px;height:34px;border-radius:10px;background:rgba(248,113,113,.14);display:flex;align-items:center;justify-content:center;color:var(--red);font-size:15px;flex-shrink:0}
+    .modal-title{font-size:14px;font-weight:800;color:var(--txt)}
+    .modal-sub{font-size:10px;color:var(--txt3);margin-top:1px}
+    .modal-close{margin-left:auto;width:26px;height:26px;background:var(--bg3);border-radius:7px;display:flex;align-items:center;justify-content:center;cursor:pointer;color:var(--txt3);font-size:12px;transition:all .15s;flex-shrink:0}
+    .modal-close:hover{color:var(--txt);border:0.5px solid var(--border2)}
+    .modal-body{padding:16px 18px}
+    .modal-manager-preview{display:flex;align-items:center;gap:10px;padding:10px 12px;background:var(--bg3);border-radius:9px;margin-bottom:14px;border:0.5px solid var(--border)}
+    .modal-field label{display:block;font-size:9px;font-weight:700;color:var(--txt3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px}
+    .modal-textarea{width:100%;padding:10px 12px;background:var(--bg3);border:0.5px solid var(--border2);border-radius:9px;font-size:12px;color:var(--txt);outline:none;font-family:inherit;resize:none;height:90px;transition:border-color .15s;line-height:1.6}
+    .modal-textarea:focus{border-color:var(--red);box-shadow:0 0 0 3px rgba(248,113,113,.1)}
+    .modal-char{font-size:9px;color:var(--txt3);text-align:right;margin-top:4px}
+    .modal-foot{padding:12px 18px;border-top:0.5px solid var(--border);display:flex;gap:8px;justify-content:flex-end}
+
+    /* ── CONFIRM MODAL (workspace suspend) ── */
+    .confirm-modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.65);backdrop-filter:blur(6px);z-index:2000;display:flex;align-items:center;justify-content:center;animation:fadeUp .18s ease}
+    .confirm-modal-box{background:var(--bg2);border:0.5px solid var(--border2);border-radius:16px;width:90%;max-width:380px;overflow:hidden;box-shadow:0 24px 60px rgba(0,0,0,.5);animation:fadeUp .22s ease}
+    .confirm-modal-header{padding:16px 18px;border-bottom:0.5px solid var(--border);display:flex;align-items:center;gap:10px}
+    .confirm-modal-body{padding:16px 18px;font-size:12px;color:var(--txt2);line-height:1.6}
+    .confirm-modal-footer{padding:12px 18px;border-top:0.5px solid var(--border);display:flex;gap:8px;justify-content:flex-end}
+
+    /* ── TERMINAL ── */
+    .term-bar{display:flex;align-items:center;gap:8px;padding:10px 14px;border-bottom:0.5px solid var(--border);flex-shrink:0;background:var(--bg3);transition:background .3s}
+    .term-dots{display:flex;gap:5px}
+    .term-dot{width:10px;height:10px;border-radius:50%}
+    .term-title{font-size:10px;font-weight:700;color:var(--txt3);font-family:monospace;flex:1;text-align:center;letter-spacing:.5px}
+    .term-feed{flex:1;overflow-y:auto;padding:10px 14px 8px;font-family:'Fira Mono','JetBrains Mono','Courier New',monospace;font-size:11px;line-height:1.75;background:transparent}
+    .term-feed::-webkit-scrollbar{width:3px}
+    .term-feed::-webkit-scrollbar-thumb{background:var(--border2);border-radius:3px}
+    .term-divider{height:0.5px;background:var(--border);flex-shrink:0;position:relative}
+    .term-divider::before{content:'── shell ──';position:absolute;left:50%;transform:translateX(-50%);top:-8px;font-size:9px;font-family:monospace;color:var(--txt3);background:var(--bg2);padding:0 8px;transition:background .3s}
+    .term-shell{flex-shrink:0;max-height:160px;overflow-y:auto;padding:8px 14px 6px;font-family:'Fira Mono','JetBrains Mono','Courier New',monospace;font-size:11px;line-height:1.75;border-top:0.5px solid rgba(74,222,128,.15);background:rgba(74,222,128,.025)}
+    .term-shell::-webkit-scrollbar{width:3px}
+    .term-shell::-webkit-scrollbar-thumb{background:rgba(74,222,128,.2);border-radius:3px}
+    .term-line{display:flex;gap:0;align-items:flex-start;animation:termIn .2s ease}
+    @keyframes termIn{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:translateY(0)}}
+    .term-prompt{color:#4ade80;flex-shrink:0;user-select:none}
+    .term-time{color:var(--txt3);flex-shrink:0;margin:0 6px;user-select:none;font-size:10px}
+    .term-msg{color:#c9d1d9;word-break:break-word;flex:1}
+    .term-msg .t-green{color:#4ade80}
+    .term-msg .t-red{color:#f87171}
+    .term-msg .t-yellow{color:#fbbf24}
+    .term-msg .t-blue{color:#818cf8}
+    .term-msg .t-cyan{color:#67e8f9}
+    .term-msg .t-white{color:#f0f6fc;font-weight:700}
+    .term-input-row{display:flex;align-items:center;padding:7px 14px;border-top:0.5px solid rgba(74,222,128,.15);flex-shrink:0;background:rgba(74,222,128,.025);gap:6px;transition:background .3s}
+    .term-prompt-static{color:#4ade80;font-family:monospace;font-size:11px;flex-shrink:0;white-space:nowrap}
+    .term-inp{background:transparent;border:none;outline:none;font-family:monospace;font-size:11px;color:#f0f6fc;flex:1;caret-color:#4ade80}
+    .term-inp::placeholder{color:var(--txt3)}
+
+    /* ── TOUR ── */
+    .tour-backdrop{position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:800;pointer-events:none}
+    .tour-highlight{position:fixed;border-radius:10px;border:2px solid var(--accent2);box-shadow:0 0 0 4px rgba(79,70,229,.25);z-index:801;pointer-events:none;transition:all .3s}
+    .tour-card{position:fixed;background:var(--bg2);border:0.5px solid var(--border2);border-radius:14px;padding:16px 18px;width:280px;box-shadow:0 16px 40px rgba(0,0,0,.5);z-index:802}
+    .tour-step-label{font-size:9px;font-weight:700;color:var(--accent2);text-transform:uppercase;letter-spacing:.8px;margin-bottom:5px}
+    .tour-title{font-size:13px;font-weight:800;color:var(--txt);margin-bottom:5px}
+    .tour-desc{font-size:11px;color:var(--txt2);line-height:1.6;margin-bottom:12px}
+    .tour-nav{display:flex;align-items:center;justify-content:space-between}
+    .tour-dots{display:flex;gap:4px}
+    .tour-dot{width:6px;height:6px;border-radius:50%;background:var(--border2)}
+    .tour-dot.active{background:var(--accent2);width:14px;border-radius:3px}
+    .tour-btns{display:flex;gap:5px}
+    .tour-btn{padding:5px 10px;border-radius:7px;font-size:11px;font-weight:700;cursor:pointer;background:var(--bg3);border:0.5px solid var(--border2);color:var(--txt2);font-family:inherit;transition:all .15s}
+    .tour-btn.primary{background:var(--accent);border-color:var(--accent);color:#fff}
+
+    /* — SEARCH HIGHLIGHT — */
+    .search-match{background:rgba(79,70,229,.2);border-radius:2px}
+  </style>
+</head>
+<body>
+
+<!-- — AUTH — -->
+<div class="screen active" id="auth-screen">
+  <div class="auth-bg"></div>
+  <div class="auth-card">
+    <div class="auth-logo">
+      <div class="auth-logo-sq">CW</div>
+      <div>
+        <div class="auth-logo-name">CoWork HQ</div>
+        <div class="auth-logo-sub">Admin Portal</div>
+      </div>
+    </div>
+    <div class="auth-admin-badge"><i class="ti ti-shield-check"></i> Administrator Access Only</div>
+    <div class="auth-title">Admin Sign In</div>
+    <div class="auth-sub">Enter your super-admin credentials</div>
+    <div class="auth-field"><label>Email Address</label><input type="email" id="loginEmail" placeholder="admin@coworkhq.in"></div>
+    <div class="auth-field"><label>Password</label><input type="password" id="loginPass" placeholder="••••••••"></div>
+    <div id="auth-err"></div>
+    <button class="auth-btn" id="login-btn" onclick="doLogin()"><i class="ti ti-shield-lock"></i> &nbsp;Sign In to Admin Portal</button>
+    <div style="text-align:center;margin-top:14px;font-size:10px;color:var(--txt3)">🔒 Secured · Super Admin Portal v3.0</div>
+  </div>
+</div>
+
+<!-- ═══ APP ═══ -->
+<div class="screen" id="app-screen">
+  <div class="nav" id="nav-top">
+    <div class="nav-logo" onclick="goHome()">
+      <div class="nav-logo-sq">CW</div>
+      <div>
+        <div class="nav-logo-text">CoWork HQ</div>
+        <div class="nav-logo-sub">Admin Portal</div>
+      </div>
+    </div>
+    <span class="super-chip">Super Admin</span>
+    <div class="nav-search">
+      <i class="ti ti-search nav-si"></i>
+      <input placeholder="Search managers, branches…" id="nav-search-inp" oninput="handleSearch(this.value)" autocomplete="off">
+    </div>
+    <div class="nav-r">
+      <div class="nav-ic-btn" id="shortcuts-btn" onclick="openShortcutsModal()" title="Keyboard Shortcuts"><i class="ti ti-keyboard"></i></div>
+      <div class="nav-ic-btn" id="theme-btn" onclick="toggleTheme()" title="Toggle Theme">
+        <svg id="theme-svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/>
+          <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/>
+          <line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/>
+          <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>
+        </svg>
+      </div>
+      <div class="nav-av" id="nav-av" onclick="toggleDD()">SA</div>
+      <div class="user-dd" id="user-dd" style="display:none"></div>
+    </div>
+  </div>
+  <div class="content" id="content"></div>
+</div>
+
+<div class="toast-wrap" id="toast-wrap"></div>
+
+<script>
+/* ═══ CONFIG ═══ */
+const API_URL = (typeof window.CONFIG !== 'undefined' && window.CONFIG.API_BASE_URL) ? window.CONFIG.API_BASE_URL : 'http://localhost:3000/api/v1';
+let accessToken = sessionStorage.getItem('cwmh_token') || null;
+let currentUser = null, ddOpen = false, isLight = false;
+let dashboardCache = null;
+// Toast queue to cap at 3 visible toasts
+const toastQueue = [];
+let visibleToasts = 0;
+
+/* ─── API CALL with response-envelope unwrap ─── */
+async function apiCall(path, options = {}) {
+  const headers = { 'Content-Type': 'application/json', ...(options.headers || {}) };
+  if (accessToken) headers['Authorization'] = 'Bearer ' + accessToken;
+  try {
+    const res = await fetch(API_URL + path, { ...options, headers });
+    if (res.status === 401) { logout(); throw new Error('Session expired'); }
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      const msg = err.message || `Request failed (${res.status})`;
+      throw new Error(Array.isArray(msg) ? msg.join(', ') : msg);
+    }
+    const j = await res.json();
+    // Unwrap NestJS {success, data, timestamp} envelope
+    return j.data !== undefined ? j.data : j;
+  } catch (e) {
+    if (e.message === 'Failed to fetch') {
+      toast('⚠️ Backend unreachable — is the server running?');
+    }
+    throw e;
+  }
+}
+
+/* ─── MODULES ─── */
+const MODS = [
+  { id: 'managers', name: 'Managers',  sub: 'All Activity',    color: '#4f46e5', icon: 'ti-user-shield' },
+  { id: 'branches', name: 'Branches',  sub: 'Workspaces',      color: '#2563eb', icon: 'ti-building-skyscraper' },
+  { id: 'platform', name: 'Fees',      sub: 'Platform Fees',   color: '#059669', icon: 'ti-credit-card' },
+  { id: 'feedbacks',name: 'Feedback',  sub: 'Reports',         color: '#d97706', icon: 'ti-message-circle' },
+  { id: 'analytics',name: 'Analytics', sub: 'Occupancy',       color: '#7c3aed', icon: 'ti-chart-bar' },
+];
+
+const SHORTCUTS = [
+  { key: 'M', id: 'managers',  label: 'Managers'  },
+  { key: 'B', id: 'branches',  label: 'Branches'  },
+  { key: 'F', id: 'platform',  label: 'Fees'      },
+  { key: 'R', id: 'feedbacks', label: 'Feedback'  },
+  { key: 'A', id: 'analytics', label: 'Analytics' },
+  { key: 'H', id: 'home',      label: 'Home'      },
+];
+const KEY_MAP = { m:'managers', b:'branches', f:'platform', r:'feedbacks', a:'analytics', h:'home' };
+
+/* ─── AUTH ─── */
+async function doLogin() {
+  const e = document.getElementById('loginEmail').value.trim();
+  const p = document.getElementById('loginPass').value.trim();
+  const errEl = document.getElementById('auth-err');
+  const btn = document.getElementById('login-btn');
+  if (!e || !p) { errEl.textContent = 'Please fill all fields.'; return; }
+  btn.disabled = true; btn.innerHTML = '<i class="ti ti-loader-2" style="animation:spin 1s linear infinite"></i> Signing in…';
+  errEl.textContent = '';
+  try {
+    const data = await apiCall('/auth/login', { method: 'POST', body: JSON.stringify({ email: e, password: p }) });
+    if (data.user.role !== 'ADMIN') { errEl.textContent = 'Access denied — Admin only.'; return; }
+    accessToken = data.accessToken;
+    sessionStorage.setItem('cwmh_token', accessToken);
+    currentUser = { name: data.user.name || data.user.email.split('@')[0], email: data.user.email, role: 'Super Admin', id: data.user.id };
+    document.getElementById('nav-av').textContent = currentUser.name.split(' ').map(w=>w[0]).join('').substring(0,2).toUpperCase();
+    showScreen('app-screen');
+    goHome();
+    toast('Welcome, ' + currentUser.name + '! 🛡️');
+    setupKeys();
+    setTimeout(() => startTour(), 700);
+  } catch (err) {
+    errEl.textContent = err.message || 'Login failed';
+  } finally {
+    btn.disabled = false; btn.innerHTML = '<i class="ti ti-shield-lock"></i> &nbsp;Sign In to Admin Portal';
+  }
+}
+document.addEventListener('keydown', e => {
+  if (e.key === 'Enter' && document.getElementById('auth-screen').classList.contains('active')) doLogin();
+});
+
+function showScreen(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  // Update page title
+  document.title = id === 'app-screen' ? 'Admin — CoWork HQ' : 'CoWork HQ — Admin Portal';
+}
+
+function logout() {
+  currentUser = null; ddOpen = false; accessToken = null;
+  sessionStorage.removeItem('cwmh_token');
+  dashboardCache = null;
+  document.getElementById('user-dd').style.display = 'none';
+  showScreen('auth-screen');
+  toast('Logged out 👋');
+}
+
+/* ─── SESSION RESTORE ─── */
+(function restoreSession() {
+  if (accessToken) {
+    apiCall('/admin/dashboard').then(data => {
+      currentUser = { name: 'Admin', email: 'admin@coworkhq.in', role: 'Super Admin' };
+      document.getElementById('nav-av').textContent = 'AD';
+      showScreen('app-screen');
+      goHome();
+      setupKeys();
+    }).catch(() => {
+      accessToken = null;
+      sessionStorage.removeItem('cwmh_token');
+    });
+  }
+})();
+
+/* ─── THEME ─── */
+function toggleTheme() {
+  isLight = !isLight;
+  document.body.classList.toggle('light-mode', isLight);
+  localStorage.setItem('cwmh_theme', isLight ? 'light' : 'dark');
+  const svg = document.getElementById('theme-svg');
+  if (isLight) {
+    svg.innerHTML = `<path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>`;
+  } else {
+    svg.innerHTML = `<circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>`;
+  }
+  toast(isLight ? 'Light mode ☀️' : 'Dark mode 🌙');
+}
+// Restore persisted theme
+(function() {
+  if (localStorage.getItem('cwmh_theme') === 'light') {
+    isLight = true;
+    document.body.classList.add('light-mode');
+    const svg = document.getElementById('theme-svg');
+    if (svg) svg.innerHTML = `<path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>`;
+  }
+})();
+
+/* ─── SEARCH (functional — filters within current module) ─── */
+let searchDebounce = null;
+function handleSearch(v) {
+  clearTimeout(searchDebounce);
+  searchDebounce = setTimeout(() => {
+    const q = v.toLowerCase().trim();
+    if (!q) { clearSearch(); return; }
+    // Route to correct module based on keywords
+    if (/manager|suspend|ban|user|staff/.test(q)) { openMod('managers'); return; }
+    if (/branch|workspace|city|desk|revenue/.test(q)) { openMod('branches'); return; }
+    if (/fee|platform|payment/.test(q)) { openMod('platform'); return; }
+    if (/feedback|report|bug|issue/.test(q)) { openMod('feedbacks'); return; }
+    if (/occupan|analytic|chart/.test(q)) { openMod('analytics'); return; }
+    // Otherwise highlight visible rows
+    highlightRows(q);
+  }, 300);
+}
+function highlightRows(q) {
+  document.querySelectorAll('.cn, .ct').forEach(el => {
+    const orig = el.textContent;
+    if (q && orig.toLowerCase().includes(q)) {
+      el.innerHTML = orig.replace(new RegExp(q, 'gi'), m => `<span class="search-match">${m}</span>`);
+    } else {
+      el.textContent = orig;
+    }
+  });
+}
+function clearSearch() {
+  document.querySelectorAll('.cn, .ct').forEach(el => { el.textContent = el.textContent; });
+}
+
+/* ─── DROPDOWN ─── */
+function toggleDD() {
+  ddOpen = !ddOpen;
+  const dd = document.getElementById('user-dd');
+  if (ddOpen) {
+    renderDD(); dd.style.display = 'block';
+    setTimeout(() => document.addEventListener('click', closeOut), 10);
+  } else {
+    dd.style.display = 'none';
+    document.removeEventListener('click', closeOut);
+  }
+}
+function closeOut(e) {
+  const dd = document.getElementById('user-dd'), av = document.getElementById('nav-av');
+  if (!dd.contains(e.target) && e.target !== av) {
+    dd.style.display = 'none'; ddOpen = false;
+    document.removeEventListener('click', closeOut);
+  }
+}
+function renderDD() {
+  const u = currentUser || { name: 'Admin', email: 'admin@coworkhq.in' };
+  const ini = u.name.split(' ').map(w=>w[0]).join('').substring(0,2).toUpperCase();
+  document.getElementById('user-dd').innerHTML = `
+  <div class="dd-head"><div class="dd-av">${ini}</div><div><div class="dd-name">${u.name}</div><div class="dd-email">${u.email}</div></div></div>
+  <div class="dd-item" onclick="ddGo('branches')"><i class="ti ti-building-skyscraper"></i> Branches</div>
+  <div class="dd-item" onclick="ddGo('managers')"><i class="ti ti-user-shield"></i> Managers</div>
+  <div class="dd-item" onclick="ddGo('analytics')"><i class="ti ti-chart-bar"></i> Analytics</div>
+  <div class="dd-sep"></div>
+  <div class="dd-item dd-red" onclick="logout()"><i class="ti ti-logout"></i> Logout</div>`;
+}
+function ddGo(id) {
+  document.getElementById('user-dd').style.display = 'none';
+  ddOpen = false;
+  document.removeEventListener('click', closeOut);
+  openMod(id);
+}
+
+/* ─── KEYBOARD ─── */
+function setupKeys() { document.removeEventListener('keydown', handleKey); document.addEventListener('keydown', handleKey); }
+function handleKey(e) {
+  if (!currentUser) return;
+  if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+  const k = e.key.toLowerCase();
+  if (k === '?') { openShortcutsModal(); return; }
+  if (KEY_MAP[k]) { e.preventDefault(); if (KEY_MAP[k] === 'home') goHome(); else openMod(KEY_MAP[k]); showKeyHint(k, KEY_MAP[k]); }
+}
+function showKeyHint(key, mod) {
+  document.querySelectorAll('.key-hint').forEach(el => el.remove());
+  const label = mod === 'home' ? 'Home' : MODS.find(m => m.id === mod)?.name || mod;
+  const h = document.createElement('div'); h.className = 'key-hint';
+  h.innerHTML = `<span style="background:var(--accent);color:#fff;padding:1px 7px;border-radius:4px;font-weight:800;font-size:12px">${key.toUpperCase()}</span> → ${label}`;
+  document.body.appendChild(h); setTimeout(() => h.remove(), 1100);
+}
+
+/* ─── CURRENCY FORMATTER ─── */
+function fmtCurrency(amount) {
+  const n = Number(amount || 0);
+  return new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(n)
+    .replace('₹', '₹');
+}
+
+/* ─── TOAST (capped at 3 visible, queued rest) ─── */
+function toast(msg, type = 'default') {
+  const MAX = 3;
+  if (visibleToasts >= MAX) { toastQueue.push({ msg, type }); return; }
+  _showToast(msg, type);
+}
+function _showToast(msg, type = 'default') {
+  visibleToasts++;
+  const w = document.getElementById('toast-wrap');
+  const t = document.createElement('div');
+  t.className = 'toast';
+  if (type === 'error') t.style.cssText = 'background:#f87171;color:#fff;border-color:#f87171';
+  t.innerHTML = msg;
+  w.appendChild(t);
+  setTimeout(() => {
+    t.classList.add('toast-out');
+    setTimeout(() => {
+      t.remove();
+      visibleToasts--;
+      if (toastQueue.length) { const next = toastQueue.shift(); _showToast(next.msg, next.type); }
+    }, 300);
+  }, 2500);
+}
+
+/* ─── SKELETON HELPERS ─── */
+function skelCards(n, cols = 4) {
+  return `<div class="g${cols}" style="margin-bottom:12px">${Array(n).fill(`<div class="skel-card"><div class="skel" style="height:9px;width:60%;margin-bottom:8px"></div><div class="skel" style="height:22px;width:40%;margin-bottom:6px"></div><div class="skel" style="height:9px;width:70%"></div></div>`).join('')}</div>`;
+}
+function skelRows(n) {
+  return Array(n).fill(`<div class="trow" style="grid-template-columns:2fr 1fr 1fr 1fr"><div class="skel" style="height:11px"></div><div class="skel" style="height:11px"></div><div class="skel" style="height:11px"></div><div class="skel" style="height:11px"></div></div>`).join('');
+}
+function emptyState(icon, title, sub) {
+  return `<div class="empty-state"><div class="empty-state-icon">${icon}</div><div class="empty-state-title">${title}</div><div class="empty-state-sub">${sub}</div></div>`;
+}
+function errCard(msg) {
+  return `<div style="text-align:center;padding:60px;color:var(--red);font-size:12px"><i class="ti ti-alert-circle" style="font-size:28px;display:block;margin-bottom:8px;opacity:.7"></i>${msg}</div>`;
+}
+
+/* ─── HOME ─── */
+let feedTimer = null, feedIdx = 0;
+
+const TERM_EVENTS = [
+  { msg: '[<span class="t-cyan">BOOKING</span>]  <span class="t-white">New booking</span> confirmed · <span class="t-green">✓</span>' },
+  { msg: '[<span class="t-yellow">AUTH</span>]     Admin session active · <span class="t-blue">verified</span>' },
+  { msg: '[<span class="t-blue">SYSTEM</span>]   All services operational' },
+  { msg: '[<span class="t-green">PAYMENT</span>] Transaction processed · <span class="t-green">SUCCESS</span>' },
+  { msg: '[<span class="t-green">CHECK-IN</span>] Customer checked in · <span class="t-green">OK</span>' },
+  { msg: '[<span class="t-blue">REPORT</span>]   Dashboard data refreshed' },
+  { msg: '[<span class="t-yellow">ISSUE</span>]    Ticket raised at Desk B3 · <span class="t-yellow">PENDING</span>' },
+  { msg: '[<span class="t-green">STAFF</span>]    Issue resolved by staff · <span class="t-green">RESOLVED</span>' },
+];
+
+const TERM_CMDS = {
+  help: () => `<span class="t-green">Available commands:</span>\n  <span class="t-cyan">branches</span>   — open Branches module\n  <span class="t-cyan">managers</span>   — open Managers module\n  <span class="t-cyan">fees</span>       — platform fees\n  <span class="t-cyan">status</span>     — live system health check\n  <span class="t-cyan">ping</span>       — ping the API\n  <span class="t-cyan">clear</span>      — clear terminal\n  <span class="t-cyan">whoami</span>     — current user`,
+  branches: () => { openMod('branches'); return '<span class="t-green">Opening Branches…</span>' },
+  managers: () => { openMod('managers'); return '<span class="t-green">Opening Managers…</span>' },
+  fees:     () => { openMod('platform'); return '<span class="t-green">Opening Platform Fees…</span>' },
+  status: async () => {
+    shellAppend('<span class="t-yellow">Checking live system health…</span>', 'output');
+    try {
+      const t0 = Date.now();
+      const res = await fetch(API_URL.replace('/api/v1','') + '/api/v1/health');
+      const latency = Date.now() - t0;
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      const h = await res.json();
+      const data = h.data || h;
+      const dot = (s) => s === 'online' || s === 'connected'
+        ? '<span class="t-green">●</span>'
+        : s === 'not configured'
+          ? '<span class="t-yellow">●</span>'
+          : '<span class="t-red">●</span>';
+      const fmt = (label, val) => `${dot(val)} <span class="t-white">${label}</span>  ${val}`;
+      return [
+        fmt('API Gateway', data.api || 'online'),
+        fmt('Database   ', data.database || 'unknown'),
+        fmt('Razorpay   ', data.razorpay || 'unknown'),
+        fmt('WhatsApp   ', data.whatsapp || 'unknown'),
+        `<span class="t-cyan">◎</span> Latency     <span class="t-white">${latency}ms</span>`,
+        `<span class="t-cyan">◎</span> Checked at  ${new Date(data.timestamp || Date.now()).toLocaleTimeString()}`,
+      ].join('\n');
+    } catch (err) {
+      return `<span class="t-red">● API unreachable</span>  ${err.message}`;
+    }
+  },
+  ping: async () => {
+    const t0 = Date.now();
+    try {
+      await fetch(API_URL.replace('/api/v1','') + '/api/v1/health');
+      return `<span class="t-green">PONG</span>  ${Date.now() - t0}ms`;
+    } catch {
+      return `<span class="t-red">No response</span>  — backend unreachable`;
+    }
+  },
+  whoami:   () => `<span class="t-white">${currentUser?.name || 'Admin'}</span> · <span class="t-blue">Super Admin</span> · ${currentUser?.email || ''}`,
+  clear:    () => { const f = document.getElementById('term-feed'); if (f) f.innerHTML = ''; shellAppend('<span class="t-green">Feed cleared.</span>', 'output'); return null; },
+};
+
+function getTime() {
+  const n = new Date();
+  return [n.getHours(), n.getMinutes(), n.getSeconds()].map(x => String(x).padStart(2,'0')).join(':');
+}
+function feedAppend(msg) {
+  const box = document.getElementById('term-feed'); if (!box) return;
+  msg.split('\n').forEach(line => {
+    const d = document.createElement('div'); d.className = 'term-line';
+    d.innerHTML = `<span class="term-prompt" style="color:#67e8f9">●&nbsp;</span><span class="term-time">${getTime()}</span><span class="term-msg">${line}</span>`;
+    box.appendChild(d);
+    while (box.children.length > 80) box.removeChild(box.firstChild);
+    box.scrollTop = box.scrollHeight;
+  });
+}
+function shellAppend(msg, type = 'output') {
+  const box = document.getElementById('term-shell'); if (!box) return;
+  msg.split('\n').forEach(line => {
+    const d = document.createElement('div'); d.className = 'term-line';
+    if (type === 'input') d.innerHTML = `<span class="term-prompt">admin@cwmh:~$&nbsp;</span><span class="term-msg">${line}</span>`;
+    else d.innerHTML = `<span class="term-msg" style="padding-left:14px">${line}</span>`;
+    box.appendChild(d);
+    while (box.children.length > 40) box.removeChild(box.firstChild);
+    box.scrollTop = box.scrollHeight;
+  });
+}
+function setupTermInput() {
+  const inp = document.getElementById('term-inp'); if (!inp) return;
+  inp.addEventListener('keydown', e => {
+    if (e.key !== 'Enter') return;
+    const val = inp.value.trim().toLowerCase(); if (!val) return;
+    shellAppend(val, 'input'); inp.value = '';
+    if (TERM_CMDS[val]) {
+      const result = TERM_CMDS[val]();
+      if (result && typeof result.then === 'function') {
+        // Async command — wait for promise
+        result.then(r => { if (r !== null && r !== undefined) shellAppend(r, 'output'); })
+               .catch(err => shellAppend(`<span class="t-red">Error: ${err.message}</span>`, 'output'));
+      } else {
+        if (result !== null && result !== undefined) shellAppend(result, 'output');
+      }
+    } else {
+      shellAppend(`<span class="t-red">command not found: ${val}</span>  type <span class="t-cyan">help</span>`, 'output');
+    }
+  });
+}
+function startTerminal() {
+  const feed = document.getElementById('term-feed'), shell = document.getElementById('term-shell');
+  if (!feed || !shell) return;
+  feed.innerHTML = ''; shell.innerHTML = '';
+  const boot = [
+    `<span class="t-green">CoWork HQ Admin v3.0</span> — <span class="t-blue">Super Admin session</span>`,
+    `Connecting to ${API_URL}…`,
+    `<span class="t-green">✓</span> Backend connected · API operational`,
+    `<span style="color:#2a3147">────────────────────────────────────</span>`,
+  ];
+  let delay = 0;
+  boot.forEach(m => { setTimeout(() => feedAppend(m), delay); delay += 120; });
+  TERM_EVENTS.slice(0,4).forEach((ev,i) => { setTimeout(() => feedAppend(ev.msg), delay + i * 70); });
+  setTimeout(() => shellAppend(`<span class="t-green">Shell ready.</span> Type <span class="t-cyan">help</span> for commands.`, 'output'), delay + 180);
+  clearInterval(feedTimer);
+  // feedTimer = setInterval(() => {
+  //   const f = document.getElementById('term-feed'); if (!f) { clearInterval(feedTimer); return; }
+  //   feedAppend(TERM_EVENTS[feedIdx++ % TERM_EVENTS.length].msg);
+  // }, 5000);
+}
+
+/* ─── HOME — fetch real data ─── */
+async function goHome() {
+  clearInterval(feedTimer);
+  document.title = 'Admin Home — CoWork HQ';
+  const name = currentUser ? currentUser.name.split(' ')[0] : 'Admin';
+
+  document.getElementById('content').innerHTML = `
+  <div class="home">
+    <div class="home-header" style="padding-bottom:14px">
+      <div style="font-size:19px;font-weight:800;color:var(--txt)">Good ${getGreeting()}, <span style="color:var(--accent2)">${name}</span> 👋</div>
+      <div style="font-size:11px;color:var(--txt3);margin-top:3px"><span class="live-dot"></span>Loading live data… · Super Admin · ${new Date().toDateString()}</div>
+    </div>
+    <div class="home-inner">
+      <div class="home-left">
+        <div class="sec-lbl">Modules</div>
+        <div class="icon-grid" id="icon-grid-tour">
+          ${MODS.map(m => `
+          <div class="icon-btn" onclick="openMod('${m.id}')">
+            <div class="icon-sq" style="background:${m.color};box-shadow:0 6px 20px ${m.color}55">
+              <i class="ti ${m.icon}" style="font-size:28px;color:#fff"></i>
+            </div>
+            <div class="icon-lbl">${m.name}</div>
+            <div class="icon-sub">${m.sub}</div>
+          </div>`).join('')}
+        </div>
+        <div id="home-stats-area">
+          ${skelCards(4, 4)}
+          <div style="height:10px"></div>
+          ${skelCards(4, 4)}
+        </div>
+      </div>
+      <div class="home-right" id="terminal-panel">
+        <div class="term-bar">
+          <div class="term-dots">
+            <div class="term-dot" style="background:#f87171"></div>
+            <div class="term-dot" style="background:#fbbf24"></div>
+            <div class="term-dot" style="background:#34d399"></div>
+          </div>
+          <div class="term-title">cwmh-live — admin@portal</div>
+          <span style="font-size:9px;color:var(--txt3);font-family:monospace">bash</span>
+        </div>
+        <div class="term-feed" id="term-feed"></div>
+        <div class="term-divider"></div>
+        <div class="term-shell" id="term-shell"></div>
+        <div class="term-input-row">
+          <span class="term-prompt-static">admin@cwmh:~$&nbsp;</span>
+          <input class="term-inp" id="term-inp" placeholder="type 'help' for commands…" autocomplete="off" spellcheck="false">
+        </div>
+      </div>
+    </div>
+  </div>`;
+
+  startTerminal();
+  setupTermInput();
+
+  try {
+    const dash = await apiCall('/admin/dashboard');
+    dashboardCache = dash;
+    const statsArea = document.getElementById('home-stats-area');
+    if (!statsArea) return;
+
+    const totalBranches = (dash.branchStats || []).length;
+    const activeBranches = (dash.branchStats || []).filter(b => b.status === 'ACTIVE').length;
+    const subEl = document.querySelector('.home-header div:last-child');
+    if (subEl) subEl.innerHTML = `<span class="live-dot"></span>${totalBranches} Branch${totalBranches !== 1 ? 'es' : ''} · Super Admin · ${new Date().toDateString()}`;
+
+    // Update badge counts on module icons
+    updateModuleBadge('managers', dash.users?.managers);
+
+    statsArea.innerHTML = `
+    <div class="sec-lbl" style="margin-top:24px">Quick Stats</div>
+    <div class="g4" style="margin-bottom:14px">
+      ${[
+        ['Total Revenue',    fmtCurrency(dash.revenue),           `${dash.bookings} bookings`,    '#34d399', 'branches'],
+        ['Workspaces',       dash.workspaces,                     `${activeBranches} active`,     '#818cf8', 'branches'],
+        ['Managers',         dash.users?.managers,                `${dash.onlineManagers} active`,'#fbbf24', 'managers'],
+        ['Open Issues',      dash.openIssues,                     'Across all branches',          '#f87171', 'branches'],
+      ].map(([l,v,s,c,mod]) => `
+      <div class="sc" style="cursor:pointer" onclick="openMod('${mod}')">
+        <div class="sc-lb">${l}</div>
+        <div class="sc-v" style="color:${c};font-size:${String(v).length > 6 ? '14px' : '18px'}">${v ?? '—'}</div>
+        <div class="sc-s">${s}</div>
+      </div>`).join('')}
+    </div>
+    <div class="g4" style="margin-bottom:14px">
+      ${[
+        ['Customers',        dash.users?.customers ?? '—',        'Registered members',           '#38bdf8', 'managers'],
+        ['Pending Fees',     fmtCurrency(dash.pendingPlatformFees),'Platform fees due',            '#f87171', 'platform'],
+        ['Total Users',      dash.users?.total ?? '—',            'All roles',                    '#6ee7b7', 'managers'],
+        ['Branches',         totalBranches,                       `${activeBranches} live`,       '#818cf8', 'branches'],
+      ].map(([l,v,s,c,mod]) => `
+      <div class="sc" style="cursor:pointer" onclick="openMod('${mod}')">
+        <div class="sc-lb">${l}</div>
+        <div class="sc-v" style="color:${c};font-size:${String(v).length > 6 ? '14px' : '18px'}">${v ?? '—'}</div>
+        <div class="sc-s">${s}</div>
+      </div>`).join('')}
+    </div>
+
+    <div class="sec-lbl">Branch Occupancy</div>
+    <div class="cc">
+      ${(dash.branchStats || []).map((br, i) => {
+        const colors = ['#4f46e5','#2563eb','#7c3aed','#059669','#d97706'];
+        return `<div class="prog">
+          <div class="pr-row"><span class="pn">${br.name}</span><span class="pp">${br.occupancyRate}%</span></div>
+          <div class="pt"><div class="pf" style="width:${Math.min(br.occupancyRate,100)}%;background:${colors[i % colors.length]}"></div></div>
+        </div>`;
+      }).join('')}
+      ${!(dash.branchStats || []).length ? '<div style="text-align:center;padding:16px;color:var(--txt3);font-size:11px">No workspaces found</div>' : ''}
+    </div>`;
+  } catch (err) {
+    const statsArea = document.getElementById('home-stats-area');
+    if (statsArea) statsArea.innerHTML = errCard('Failed to load dashboard: ' + err.message);
+  }
+}
+
+function updateModuleBadge(id, count) {
+  const icon = document.querySelector(`.icon-btn[onclick="openMod('${id}')"] .icon-sq`);
+  if (icon && count) {
+    const existing = icon.querySelector('.icon-badge');
+    if (existing) existing.remove();
+    const badge = document.createElement('div'); badge.className = 'icon-badge'; badge.textContent = count > 99 ? '99+' : count;
+    icon.appendChild(badge);
+  }
+}
+
+function getGreeting() {
+  const h = new Date().getHours();
+  return h < 12 ? 'morning' : h < 17 ? 'afternoon' : 'evening';
+}
+
+/* ─── MODULE SHELL ─── */
+function openMod(id) {
+  clearInterval(feedTimer);
+  const m = MODS.find(x => x.id === id); if (!m) return;
+  document.title = `${m.name} — CoWork HQ Admin`;
+  const c = document.getElementById('content'); c.innerHTML = '';
+  const d = document.createElement('div'); d.className = 'detail';
+  const top = document.createElement('div'); top.className = 'dtop';
+  top.innerHTML = `
+  <div class="back" onclick="goHome()"><i class="ti ti-arrow-left"></i></div>
+  <div class="dtop-sq" style="background:${m.color}"><i class="ti ${m.icon}" style="font-size:17px;color:#fff"></i></div>
+  <div><div class="dtop-title">${m.name}</div><div class="dtop-sub">${m.sub}</div></div>
+  <div class="dbtns" id="dbtns"></div>`;
+  d.appendChild(top);
+  const body = document.createElement('div'); body.className = 'dbody'; body.id = 'dbody';
+  // Skeleton loading state
+  body.innerHTML = skelCards(4, 4) + `<div class="tbl"><div class="tbl-bar"><div class="tbl-ttl">Loading…</div></div>${skelRows(5)}</div>`;
+  d.appendChild(body); c.appendChild(d);
+  const renders = { managers: rManagers, branches: rBranches, platform: rPlatformFees, feedbacks: rFeedbacks, analytics: rOccupancy };
+  (renders[id] || function(){})( body, document.getElementById('dbtns'));
+}
+
+/* ═══════════════════════════════
+   MODULE: MANAGERS
+═══════════════════════════════ */
+async function rManagers(b, btns) {
+  btns.innerHTML = `
+  <div class="nav-search" style="max-width:220px;margin:0">
+    <i class="ti ti-search nav-si"></i>
+    <input placeholder="Filter managers…" id="mgr-filter" oninput="filterManagers(this.value)" style="width:100%;background:var(--bg3);border:0.5px solid var(--border2);border-radius:100px;padding:6px 12px 6px 28px;font-size:11px;color:var(--txt);outline:none;font-family:inherit">
+  </div>
+  <button class="dbtn" onclick="openMod('managers')"><i class="ti ti-refresh" style="font-size:12px"></i> Refresh</button>`;
+
+  b.innerHTML = skelCards(4,4) + skelRows(4);
+
+  try {
+    const data = await apiCall('/admin/users?role=MANAGER');
+    const mgrs = data.users || [];
+
+    if (!mgrs.length) {
+      b.innerHTML = emptyState('👤', 'No Managers Yet', 'Manager accounts will appear here once they register on the platform.');
+      return;
+    }
+
+    const totalMgrs    = data.total || mgrs.length;
+    const onlineMgrs   = mgrs.filter(m => m.isActive && !m.isBanned).length;
+    const suspendedMgrs= mgrs.filter(m => m.isBanned).length;
+    const totalBookings= mgrs.reduce((a,m) => a + (m.managerStats?.totalBookings||0), 0);
+    const COLORS = ['#4f46e5','#059669','#d97706','#dc2626','#7c3aed','#2563eb','#0369a1','#b91c1c'];
+
+    b.innerHTML = `
+    <div class="g4">
+      ${[
+        ['Total Managers', totalMgrs,       `${mgrs.length} loaded`,       '#818cf8'],
+        ['Active',         onlineMgrs,      `${suspendedMgrs} suspended`,  '#34d399'],
+        ['Total Bookings', totalBookings,   'Across all managers',         '#fbbf24'],
+        ['Workspaces',     mgrs.reduce((a,m)=>a+(m.managerStats?.workspaceCount||0),0), 'Managed', '#38bdf8'],
+      ].map(([l,v,s,c]) => `<div class="sc"><div class="sc-lb">${l}</div><div class="sc-v" style="color:${c}">${v}</div><div class="sc-s">${s}</div></div>`).join('')}
+    </div>
+
+    <div class="sec-lbl" style="margin-bottom:8px">Manager Roster</div>
+    <div id="mgr-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px">
+      ${mgrs.map((m, idx) => renderMgrCard(m, idx, COLORS)).join('')}
+    </div>
+
+    <div class="tbl" style="margin-top:4px">
+      <div class="tbl-bar"><div class="tbl-ttl">Manager Summary</div></div>
+      <div class="tbl-wrap">
+        <div class="thead" style="grid-template-columns:2fr 1.5fr 1fr 1fr 1fr 1fr 1fr">
+          <span>Manager</span><span>Business</span><span>Workspaces</span><span>Bookings</span><span>Revenue</span><span>Status</span><span>Actions</span>
+        </div>
+        ${mgrs.map((m, idx) => {
+          const stats = m.managerStats || {};
+          const st = m.isBanned ? 'Suspended' : (m.isActive ? 'Active' : 'Inactive');
+          const ini = m.name.split(' ').map(w=>w[0]).join('').substring(0,2).toUpperCase();
+          const color = COLORS[idx % COLORS.length];
+          return `<div class="trow" style="grid-template-columns:2fr 1.5fr 1fr 1fr 1fr 1fr 1fr">
+            <div style="display:flex;align-items:center;gap:8px">
+              <div style="width:26px;height:26px;border-radius:7px;background:${color};display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:800;color:#fff;flex-shrink:0">${ini}</div>
+              <div><div class="cn">${m.name}</div><div style="font-size:9px;color:var(--txt3)">${m.email}</div></div>
+            </div>
+            <div class="ct">${m.managerProfile?.businessName || '—'}</div>
+            <div class="ct">${stats.workspaceCount || 0}</div>
+            <div class="ct">${stats.totalBookings || 0}</div>
+            <div style="font-size:11px;font-weight:700;color:#34d399">${fmtCurrency(stats.totalRevenue || 0)}</div>
+            <span class="badge ${st==='Active'?'bs':st==='Suspended'?'be':'bw'}">${st}</span>
+            <div style="display:flex;gap:4px">
+              ${st === 'Suspended'
+                ? `<button class="act-btn act-green" onclick="reinstateManager('${m.id}','${m.name.replace(/'/g,"\\'")}')"><i class="ti ti-user-check" style="font-size:9px"></i> Reinstate</button>`
+                : `<button class="act-btn act-warn" onclick="suspendManager('${m.id}','${m.name.replace(/'/g,"\\'")}','${(stats.branchNames||'—').replace(/'/g,"\\'")}','${ini}','${color}')"><i class="ti ti-user-off" style="font-size:9px"></i> Suspend</button>`}
+            </div>
+          </div>`;
+        }).join('')}
+      </div>
+    </div>`;
+  } catch (err) {
+    b.innerHTML = errCard('Failed to load managers: ' + err.message);
+  }
+}
+
+function renderMgrCard(m, idx, COLORS) {
+  const ini    = m.name.split(' ').map(w=>w[0]).join('').substring(0,2).toUpperCase();
+  const color  = COLORS[idx % COLORS.length];
+  const st     = m.isBanned ? 'Suspended' : (m.isActive ? 'Active' : 'Inactive');
+  const pipCol = st === 'Active' ? '#34d399' : st === 'Suspended' ? '#f87171' : '#4a5568';
+  const stats  = m.managerStats || {};
+  return `<div data-mgr-name="${m.name.toLowerCase()}" data-mgr-email="${m.email.toLowerCase()}" style="background:var(--bg2);border:0.5px solid var(--border);border-radius:12px;overflow:hidden;transition:all .18s;cursor:default"
+    onmouseover="this.style.borderColor='var(--border2)';this.style.transform='translateY(-2px)';this.style.boxShadow='0 6px 20px rgba(0,0,0,.22)'"
+    onmouseout="this.style.borderColor='var(--border)';this.style.transform='';this.style.boxShadow=''">
+    <div style="height:3px;background:${color};opacity:.7"></div>
+    <div style="padding:14px 14px 12px">
+      <div style="display:flex;align-items:flex-start;gap:11px;margin-bottom:12px">
+        <div style="position:relative;flex-shrink:0">
+          <div style="width:46px;height:46px;border-radius:14px;background:linear-gradient(145deg,${color},${color}bb);display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:800;color:#fff;letter-spacing:.5px;box-shadow:0 4px 12px ${color}55">${ini}</div>
+          <div style="position:absolute;bottom:-2px;right:-2px;width:12px;height:12px;border-radius:50%;background:${pipCol};border:2.5px solid var(--bg2)"></div>
+        </div>
+        <div style="flex:1;min-width:0">
+          <div style="font-size:13px;font-weight:800;color:var(--txt);line-height:1.2">${m.name}</div>
+          <div style="font-size:10px;color:var(--txt3);margin-top:2px"><i class="ti ti-building" style="font-size:10px"></i> ${stats.branchNames || 'No workspace'}</div>
+          <div style="font-size:9px;color:var(--txt3);margin-top:1px">${m.email}</div>
+        </div>
+        <span class="badge ${st==='Active'?'bs':st==='Suspended'?'be':'bw'}" style="flex-shrink:0">${st}</span>
+      </div>
+      <div style="display:flex;gap:0;margin-bottom:12px;background:var(--bg3);border-radius:8px;overflow:hidden;border:0.5px solid var(--border)">
+        ${[['📅','Bookings',stats.totalBookings||0],['⚠️','Issues',stats.totalIssues||0],['💰','Revenue',fmtCurrency(stats.totalRevenue||0)]].map(([ic,lbl,val],i2)=>`
+        <div style="flex:1;padding:7px 8px;text-align:center;${i2<2?'border-right:0.5px solid var(--border)':''}">
+          <div style="font-size:9px;color:var(--txt3);margin-bottom:2px">${lbl}</div>
+          <div style="font-size:11px;font-weight:800;color:var(--txt)">${val}</div>
+        </div>`).join('')}
+      </div>
+      <div style="display:flex;gap:5px;flex-wrap:wrap">
+        ${st === 'Suspended'
+          ? `<button class="act-btn act-green" onclick="reinstateManager('${m.id}','${m.name.replace(/'/g,"\\'")}')"><i class="ti ti-user-check" style="font-size:9px"></i> Reinstate</button>`
+          : `<button class="act-btn act-warn" onclick="suspendManager('${m.id}','${m.name.replace(/'/g,"\\'")}','${(stats.branchNames||'—').replace(/'/g,"\\'")}','${ini}','${color}')"><i class="ti ti-user-off" style="font-size:9px"></i> Suspend</button>`}
+      </div>
+    </div>
+  </div>`;
+}
+
+function filterManagers(q) {
+  const grid = document.getElementById('mgr-grid'); if (!grid) return;
+  const term = q.toLowerCase();
+  grid.querySelectorAll('[data-mgr-name]').forEach(card => {
+    const match = !term || card.dataset.mgrName.includes(term) || card.dataset.mgrEmail.includes(term);
+    card.style.display = match ? '' : 'none';
+  });
+}
+
+/* ═══════════════════════════════
+   MODULE: BRANCHES
+═══════════════════════════════ */
+async function rBranches(b, btns) {
+  btns.innerHTML = `
+  <div class="nav-search" style="max-width:200px;margin:0">
+    <i class="ti ti-search nav-si"></i>
+    <input placeholder="Filter by city…" id="branch-filter" oninput="filterBranches(this.value)" style="width:100%;background:var(--bg3);border:0.5px solid var(--border2);border-radius:100px;padding:6px 12px 6px 28px;font-size:11px;color:var(--txt);outline:none;font-family:inherit">
+  </div>
+  <button class="dbtn" onclick="openMod('branches')"><i class="ti ti-refresh" style="font-size:12px"></i> Refresh</button>`;
+
+  b.innerHTML = skelCards(3,3) + skelRows(4);
+
+  try {
+    const data = await apiCall('/admin/workspaces');
+    const branches = data.workspaces || [];
+
+    if (!branches.length) {
+      b.innerHTML = emptyState('🏢', 'No Workspaces Yet', 'Workspace branches managed by your managers will appear here.');
+      return;
+    }
+
+    const totalRevenue = branches.reduce((a,br) => a + (br.revenue||0), 0);
+    const totalDesks   = branches.reduce((a,br) => a + (br.totalDesks||0), 0);
+    const COLORS = ['#4f46e5','#2563eb','#7c3aed','#059669','#d97706'];
+    const ICONS  = ['🏙️','🌆','🏗️','🏢','🏛️'];
+
+    b.innerHTML = `
+    <div class="g3">
+      ${[
+        ['Total Workspaces', data.total || branches.length, 'From database',                  '#818cf8'],
+        ['Total Desks',      totalDesks,                    `Across ${branches.length} spaces`,'#34d399'],
+        ['Combined Revenue', fmtCurrency(totalRevenue),     'Confirmed bookings',             '#fbbf24'],
+      ].map(([l,v,s,c]) => `<div class="sc"><div class="sc-lb">${l}</div><div class="sc-v" style="color:${c}">${v}</div><div class="sc-s">${s}</div></div>`).join('')}
+    </div>
+
+    <div id="branch-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:12px">
+      ${branches.map((br,idx) => {
+        const color = COLORS[idx % COLORS.length], icon = ICONS[idx % ICONS.length];
+        const stBadge = br.status === 'ACTIVE' ? 'bs' : br.status === 'SUSPENDED' ? 'be' : 'bw';
+        return `<div data-branch-name="${br.name.toLowerCase()}" data-branch-city="${(br.city||'').toLowerCase()}"
+          style="background:var(--bg2);border:0.5px solid var(--border);border-radius:12px;padding:16px;transition:all .18s;cursor:default"
+          onmouseover="this.style.borderColor='${color}55';this.style.transform='translateY(-2px)';this.style.boxShadow='0 6px 20px rgba(0,0,0,.2)'"
+          onmouseout="this.style.borderColor='var(--border)';this.style.transform='';this.style.boxShadow=''">
+          <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:12px">
+            <div style="width:48px;height:48px;background:${color}22;border-radius:13px;display:flex;align-items:center;justify-content:center;font-size:22px">${icon}</div>
+            <span class="badge ${stBadge}">${br.status}</span>
+          </div>
+          <div style="font-size:14px;font-weight:800;color:var(--txt);margin-bottom:2px">${br.name}</div>
+          <div style="font-size:10px;color:var(--txt3);margin-bottom:12px"><i class="ti ti-map-pin" style="font-size:10px"></i> ${br.address}, ${br.city} · ${br.totalDesks} desks</div>
+          <div style="display:flex;gap:10px;font-size:10px;color:var(--txt3);margin:10px 0">
+            <span><i class="ti ti-user" style="font-size:10px"></i> ${br.managerName}</span>
+            <span><i class="ti ti-id-badge-2" style="font-size:10px"></i> ${br.totalStaff} Staff</span>
+            <span><i class="ti ti-calendar-check" style="font-size:10px"></i> ${br.totalBookings}</span>
+          </div>
+          <div style="display:flex;justify-content:space-between;align-items:center">
+            <div style="font-size:15px;font-weight:800;color:#34d399">${fmtCurrency(br.revenue || 0)}</div>
+            ${br.status !== 'SUSPENDED' ? `<button class="act-btn act-red" onclick="suspendWorkspaceConfirm('${br.id}','${br.name.replace(/'/g,"\\'")}')"><i class="ti ti-ban" style="font-size:9px"></i> Suspend</button>` : ''}
+          </div>
+        </div>`;
+      }).join('')}
+    </div>
+
+    <div class="tbl">
+      <div class="tbl-bar"><div class="tbl-ttl">Workspace Summary</div></div>
+      <div class="tbl-wrap">
+        <div class="thead" style="grid-template-columns:2fr 1fr 1fr 1fr 1fr 1fr 1fr">
+          <span>Workspace</span><span>City</span><span>Desks</span><span>Manager</span><span>Staff</span><span>Bookings</span><span>Revenue</span>
+        </div>
+        ${branches.map((br,idx) => `
+        <div class="trow" style="grid-template-columns:2fr 1fr 1fr 1fr 1fr 1fr 1fr">
+          <div style="display:flex;align-items:center;gap:8px"><div style="width:8px;height:8px;border-radius:50%;background:${COLORS[idx%COLORS.length]}"></div><div class="cn">${br.name}</div></div>
+          <div class="ct">${br.city}</div>
+          <div class="ct">${br.totalDesks}</div>
+          <div class="ct">${br.managerName}</div>
+          <div class="ct">${br.totalStaff}</div>
+          <div class="ct">${br.totalBookings}</div>
+          <div style="font-size:11px;font-weight:700;color:#34d399">${fmtCurrency(br.revenue||0)}</div>
+        </div>`).join('')}
+      </div>
+    </div>`;
+  } catch (err) {
+    b.innerHTML = errCard('Failed to load workspaces: ' + err.message);
+  }
+}
+
+function filterBranches(q) {
+  const grid = document.getElementById('branch-grid'); if (!grid) return;
+  const term = q.toLowerCase();
+  grid.querySelectorAll('[data-branch-name]').forEach(card => {
+    const match = !term || card.dataset.branchName.includes(term) || card.dataset.branchCity.includes(term);
+    card.style.display = match ? '' : 'none';
+  });
+}
+
+/* ═══════════════════════════════
+   MODULE: PLATFORM FEES
+═══════════════════════════════ */
+async function rPlatformFees(b, btns) {
+  btns.innerHTML = `
+    <select id="fee-status-filter" onchange="rPlatformFees(document.getElementById('dbody'), document.getElementById('dbtns'))" style="padding:6px 10px;background:var(--bg3);border:0.5px solid var(--border2);border-radius:8px;font-size:11px;color:var(--txt);outline:none;font-family:inherit;cursor:pointer">
+      <option value="">All</option><option value="PENDING">Pending</option><option value="SUCCESS">Paid</option>
+    </select>
+    <button class="dbtn" onclick="openMod('platform')"><i class="ti ti-refresh" style="font-size:12px"></i> Refresh</button>`;
+  b.innerHTML = skelCards(3,3) + skelRows(4);
+  try {
+    const filterEl = document.getElementById('fee-status-filter');
+    const status = filterEl ? filterEl.value : '';
+    const fees = await apiCall(`/admin/platform-fees?status=${status}`);
+    const list = Array.isArray(fees) ? fees : [];
+    const totalPaid    = list.filter(f=>f.status==='SUCCESS').reduce((a,f)=>a+Number(f.amount||0),0);
+    const totalPending = list.filter(f=>f.status==='PENDING').reduce((a,f)=>a+Number(f.amount||0),0);
+    const pendingCount = list.filter(f=>f.status==='PENDING').length;
+    if (!list.length) { b.innerHTML = emptyState('💳', 'No Fee Records', 'Platform fee payments will appear here once managers start paying.'); return; }
+    b.innerHTML = `
+    <div class="g3">
+      ${[
+        ['Total Collected', fmtCurrency(totalPaid),    `${list.filter(f=>f.status==='SUCCESS').length} payments`,'#34d399'],
+        ['Pending Amount',  fmtCurrency(totalPending), `${pendingCount} overdue`,                                '#f87171'],
+        ['Total Records',   list.length,               'All time',                                               '#818cf8'],
+      ].map(([l,v,s,c]) => `<div class="sc"><div class="sc-lb">${l}</div><div class="sc-v" style="color:${c};font-size:${String(v).length>8?'13px':'18px'}">${v}</div><div class="sc-s">${s}</div></div>`).join('')}
+    </div>
+    <div class="tbl"><div class="tbl-bar"><div class="tbl-ttl">Fee Payments</div></div>
+      <div class="tbl-wrap">
+        <div class="thead" style="grid-template-columns:2fr 1.5fr 1fr 1fr 1fr">
+          <span>Manager</span><span>Business</span><span>Month</span><span>Amount</span><span>Status</span>
+        </div>
+        ${list.map(f => `<div class="trow" style="grid-template-columns:2fr 1.5fr 1fr 1fr 1fr">
+          <div class="cn">${f.manager?.user?.name || '—'}</div>
+          <div class="ct">${f.manager?.businessName || '—'}</div>
+          <div class="ct">${f.month || '—'}</div>
+          <div style="font-size:11px;font-weight:700;color:var(--txt)">${fmtCurrency(f.amount||0)}</div>
+          <span class="badge ${f.status==='SUCCESS'?'bs':f.status==='PENDING'?'bw':'be'}">${f.status}</span>
+        </div>`).join('')}
+      </div>
+    </div>`;
+  } catch (err) { b.innerHTML = errCard('Failed to load fees: ' + err.message); }
+}
+
+/* ═══════════════════════════════
+   MODULE: FEEDBACKS
+═══════════════════════════════ */
+async function rFeedbacks(b, btns) {
+  btns.innerHTML = `
+    <select id="fb-filter" onchange="rFeedbacks(document.getElementById('dbody'),document.getElementById('dbtns'))" style="padding:6px 10px;background:var(--bg3);border:0.5px solid var(--border2);border-radius:8px;font-size:11px;color:var(--txt);outline:none;font-family:inherit;cursor:pointer">
+      <option value="">All</option><option value="false">Open</option><option value="true">Resolved</option>
+    </select>
+    <button class="dbtn" onclick="openMod('feedbacks')"><i class="ti ti-refresh" style="font-size:12px"></i> Refresh</button>`;
+  b.innerHTML = skelRows(5);
+  try {
+    const filterEl = document.getElementById('fb-filter');
+    const resolved = filterEl ? filterEl.value : '';
+    const fbs = await apiCall(`/admin/feedbacks?resolved=${resolved}`);
+    const list = Array.isArray(fbs) ? fbs : [];
+    if (!list.length) { b.innerHTML = emptyState('💬', 'No Feedback Yet', 'Manager feedback and bug reports will show here.'); return; }
+    b.innerHTML = `
+    <div class="g2" style="margin-bottom:4px">
+      ${[
+        ['Open',     list.filter(f=>!f.isResolved).length, 'Awaiting response','#f87171'],
+        ['Resolved', list.filter(f=>f.isResolved).length,  'All clear',        '#34d399'],
+      ].map(([l,v,s,c]) => `<div class="sc"><div class="sc-lb">${l}</div><div class="sc-v" style="color:${c}">${v}</div><div class="sc-s">${s}</div></div>`).join('')}
+    </div>
+    <div style="display:flex;flex-direction:column;gap:8px">
+      ${list.map(f => `
+      <div style="background:var(--bg2);border:0.5px solid var(--border);border-radius:10px;padding:14px;${!f.isResolved?'border-left:3px solid var(--yellow)':''}">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px;margin-bottom:8px">
+          <div>
+            <div style="font-size:12px;font-weight:800;color:var(--txt)">${f.subject}</div>
+            <div style="font-size:10px;color:var(--txt3);margin-top:2px">${f.manager?.user?.name || '—'} · ${new Date(f.createdAt).toLocaleDateString('en-IN')}</div>
+          </div>
+          <span class="badge ${f.isResolved?'bs':'bw'}">${f.isResolved?'Resolved':'Open'}</span>
+        </div>
+        <div style="font-size:11px;color:var(--txt2);line-height:1.6;margin-bottom:10px">${f.message}</div>
+        ${f.adminNote ? `<div style="padding:8px 10px;background:rgba(79,70,229,.08);border-left:2px solid var(--accent);border-radius:0 6px 6px 0;font-size:11px;color:var(--txt2)"><strong>Admin note:</strong> ${f.adminNote}</div>` : ''}
+        ${!f.isResolved ? `
+        <div style="margin-top:10px;display:flex;gap:6px;align-items:center">
+          <input id="fb-note-${f.id}" placeholder="Write a response…" style="flex:1;padding:7px 10px;background:var(--bg3);border:0.5px solid var(--border2);border-radius:7px;font-size:11px;color:var(--txt);outline:none;font-family:inherit">
+          <button class="act-btn act-green" onclick="respondFeedback('${f.id}')"><i class="ti ti-check" style="font-size:10px"></i> Resolve</button>
+        </div>` : ''}
+      </div>`).join('')}
+    </div>`;
+  } catch (err) { b.innerHTML = errCard('Failed to load feedbacks: ' + err.message); }
+}
+
+async function respondFeedback(id) {
+  const noteEl = document.getElementById('fb-note-' + id);
+  const note = noteEl ? noteEl.value.trim() : '';
+  if (!note) { toast('Please write a response first.'); noteEl?.focus(); return; }
+  try {
+    await apiCall(`/admin/feedbacks/${id}`, { method: 'PATCH', body: JSON.stringify({ adminNote: note, isResolved: true }) });
+    toast('Feedback resolved ✓');
+    openMod('feedbacks');
+  } catch (err) { toast('Failed: ' + err.message, 'error'); }
+}
+
+/* ═══════════════════════════════
+   MODULE: OCCUPANCY ANALYTICS
+═══════════════════════════════ */
+async function rOccupancy(b, btns) {
+  btns.innerHTML = `<button class="dbtn" onclick="openMod('analytics')"><i class="ti ti-refresh" style="font-size:12px"></i> Refresh</button>`;
+  b.innerHTML = skelCards(4,4);
+  try {
+    const data = await apiCall('/admin/analytics/occupancy');
+    const list = Array.isArray(data) ? data : [];
+    if (!list.length) { b.innerHTML = emptyState('📊', 'No Occupancy Data', 'Workspace occupancy will appear once bookings start coming in.'); return; }
+    const avg = list.reduce((a,w)=>a+parseFloat(w.occupancyRate||0),0)/list.length;
+    b.innerHTML = `
+    <div class="g3">
+      ${[
+        ['Avg Occupancy',  avg.toFixed(1)+'%',  'Across all spaces',  '#818cf8'],
+        ['Total Spaces',   list.length,          'Tracked',            '#4f46e5'],
+        ['Total Bookings', list.reduce((a,w)=>a+(w.bookingsLast30||0),0), 'Last 30 days', '#34d399'],
+      ].map(([l,v,s,c]) => `<div class="sc"><div class="sc-lb">${l}</div><div class="sc-v" style="color:${c}">${v}</div><div class="sc-s">${s}</div></div>`).join('')}
+    </div>
+    <div class="cc">
+      <div class="cc-ttl">Occupancy Rates — Last 30 Days</div>
+      ${list.map((w, i) => {
+        const rate = parseFloat(w.occupancyRate) || 0;
+        const colors = ['#4f46e5','#2563eb','#7c3aed','#059669','#d97706'];
+        return `<div class="prog">
+          <div class="pr-row"><span class="pn">${w.name} <span style="color:var(--txt3);font-weight:400">(${w.city})</span></span><span class="pp">${w.occupancyRate}</span></div>
+          <div class="pt"><div class="pf" style="width:${Math.min(rate,100)}%;background:${colors[i%colors.length]}"></div></div>
+        </div>`;
+      }).join('')}
+    </div>
+    <div class="tbl"><div class="tbl-bar"><div class="tbl-ttl">Workspace Breakdown</div></div>
+      <div class="tbl-wrap">
+        <div class="thead" style="grid-template-columns:2fr 1fr 1fr 1fr">
+          <span>Workspace</span><span>City</span><span>Desks</span><span>Bookings (30d)</span>
+        </div>
+        ${list.map(w => `<div class="trow" style="grid-template-columns:2fr 1fr 1fr 1fr">
+          <div class="cn">${w.name}</div>
+          <div class="ct">${w.city}</div>
+          <div class="ct">${w.totalDesks}</div>
+          <div class="ct">${w.bookingsLast30}</div>
+        </div>`).join('')}
+      </div>
+    </div>`;
+  } catch (err) { b.innerHTML = errCard('Failed to load analytics: ' + err.message); }
+}
+
+/* ═══ MANAGER ACTIONS ═══ */
+function suspendManager(userId, name, branch, ini, color) {
+  if (document.getElementById('suspend-modal')) return;
+  const ov = document.createElement('div'); ov.id = 'suspend-modal'; ov.className = 'modal-overlay';
+  ov.innerHTML = `
+  <div class="modal-box">
+    <div class="modal-head">
+      <div class="modal-icon"><i class="ti ti-user-off"></i></div>
+      <div><div class="modal-title">Suspend Manager</div><div class="modal-sub">This action will notify the manager immediately</div></div>
+      <div class="modal-close" onclick="document.getElementById('suspend-modal').remove()"><i class="ti ti-x"></i></div>
+    </div>
+    <div class="modal-body">
+      <div class="modal-manager-preview">
+        <div style="width:38px;height:38px;border-radius:11px;background:${color};display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:800;color:#fff;flex-shrink:0">${ini}</div>
+        <div><div style="font-size:12px;font-weight:700;color:var(--txt)">${name}</div><div style="font-size:10px;color:var(--txt3);margin-top:1px"><i class="ti ti-building" style="font-size:10px"></i> ${branch}</div></div>
+        <span class="badge bw" style="margin-left:auto">Will be suspended</span>
+      </div>
+      <div class="modal-field">
+        <label>Reason for suspension <span style="color:var(--red)">*</span></label>
+        <textarea class="modal-textarea" id="suspend-reason" placeholder="e.g. Repeated policy violations…" maxlength="300" oninput="document.getElementById('suspend-char').textContent=this.value.length+'/300'"></textarea>
+        <div class="modal-char" id="suspend-char">0/300</div>
+      </div>
+      <div style="padding:9px 11px;background:rgba(251,191,36,.07);border:0.5px solid rgba(251,191,36,.2);border-radius:8px;font-size:10px;color:var(--yellow);display:flex;gap:7px;align-items:flex-start;margin-top:2px">
+        <i class="ti ti-info-circle" style="font-size:12px;flex-shrink:0;margin-top:1px"></i>
+        <span>The manager will receive a notification. Their access will be revoked immediately.</span>
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button class="dbtn" onclick="document.getElementById('suspend-modal').remove()">Cancel</button>
+      <button class="dbtn danger" onclick="confirmSuspend('${userId}','${name.replace(/'/g,"\\'")}')">
+        <i class="ti ti-user-off" style="font-size:12px"></i> Confirm Suspension
+      </button>
+    </div>
+  </div>`;
+  ov.addEventListener('click', e => { if (e.target === ov) ov.remove(); });
+  document.body.appendChild(ov);
+  setTimeout(() => document.getElementById('suspend-reason')?.focus(), 200);
+}
+
+async function confirmSuspend(userId, name) {
+  const reason = document.getElementById('suspend-reason')?.value.trim();
+  if (!reason) {
+    const ta = document.getElementById('suspend-reason');
+    if (ta) { ta.style.borderColor = 'var(--red)'; ta.focus(); }
+    toast('Please enter a reason before suspending.');
+    return;
+  }
+  const btn = document.querySelector('#suspend-modal .dbtn.danger');
+  if (btn) { btn.disabled = true; btn.innerHTML = '<i class="ti ti-loader-2" style="animation:spin 1s linear infinite;font-size:12px"></i> Suspending…'; }
+  try {
+    await apiCall(`/admin/users/${userId}/ban`, { method: 'PATCH', body: JSON.stringify({ reason }) });
+    document.getElementById('suspend-modal')?.remove();
+    toast(name + ' suspended 🔴');
+    setTimeout(() => openMod('managers'), 600);
+  } catch (err) {
+    toast('Suspension failed: ' + err.message, 'error');
+    if (btn) { btn.disabled = false; btn.innerHTML = '<i class="ti ti-user-off" style="font-size:12px"></i> Confirm Suspension'; }
+  }
+}
+
+async function reinstateManager(userId, name) {
+  try {
+    await apiCall(`/admin/users/${userId}/unban`, { method: 'PATCH' });
+    toast(name + ' reinstated ✅');
+    setTimeout(() => openMod('managers'), 600);
+  } catch (err) { toast('Failed: ' + err.message, 'error'); }
+}
+
+/* ═══ WORKSPACE SUSPEND — styled modal, not confirm() ═══ */
+function suspendWorkspaceConfirm(workspaceId, name) {
+  if (document.getElementById('ws-confirm-modal')) return;
+  const ov = document.createElement('div'); ov.id = 'ws-confirm-modal'; ov.className = 'confirm-modal-overlay';
+  ov.innerHTML = `
+  <div class="confirm-modal-box">
+    <div class="confirm-modal-header">
+      <div class="modal-icon" style="background:rgba(248,113,113,.14)"><i class="ti ti-ban"></i></div>
+      <div><div class="modal-title">Suspend Workspace</div><div class="modal-sub">${name}</div></div>
+      <div class="modal-close" style="margin-left:auto" onclick="document.getElementById('ws-confirm-modal').remove()"><i class="ti ti-x"></i></div>
+    </div>
+    <div class="confirm-modal-body">
+      Suspending this workspace will <strong>block all new bookings</strong>. Existing confirmed bookings are not affected. This action can be reversed later.
+    </div>
+    <div class="confirm-modal-footer">
+      <button class="dbtn" onclick="document.getElementById('ws-confirm-modal').remove()">Cancel</button>
+      <button class="dbtn danger" onclick="doSuspendWorkspace('${workspaceId}','${name.replace(/'/g,"\\'")}')">
+        <i class="ti ti-ban" style="font-size:12px"></i> Suspend
+      </button>
+    </div>
+  </div>`;
+  ov.addEventListener('click', e => { if (e.target === ov) ov.remove(); });
+  document.body.appendChild(ov);
+}
+async function doSuspendWorkspace(workspaceId, name) {
+  const btn = document.querySelector('#ws-confirm-modal .dbtn.danger');
+  if (btn) { btn.disabled = true; btn.innerHTML = '<i class="ti ti-loader-2" style="animation:spin 1s linear infinite;font-size:12px"></i>'; }
+  try {
+    await apiCall(`/admin/workspaces/${workspaceId}/suspend`, { method: 'PATCH' });
+    document.getElementById('ws-confirm-modal')?.remove();
+    toast(name + ' suspended 🔴');
+    setTimeout(() => openMod('branches'), 600);
+  } catch (err) { toast('Failed: ' + err.message, 'error'); if (btn) { btn.disabled = false; btn.innerHTML = '<i class="ti ti-ban" style="font-size:12px"></i> Suspend'; } }
+}
+
+/* ═══ SHORTCUTS MODAL ═══ */
+function openShortcutsModal() {
+  if (document.getElementById('sc-modal-overlay')) return;
+  const ov = document.createElement('div'); ov.id = 'sc-modal-overlay'; ov.className = 'sc-modal-overlay';
+  ov.innerHTML = `
+  <div class="sc-modal">
+    <div class="sc-modal-head">
+      <div class="sc-modal-title"><i class="ti ti-keyboard" style="color:var(--accent2)"></i> Keyboard Shortcuts</div>
+      <div class="sc-modal-close" onclick="document.getElementById('sc-modal-overlay').remove()"><i class="ti ti-x"></i></div>
+    </div>
+    <div style="font-size:10px;color:var(--txt3);margin-bottom:12px">Press any key to navigate instantly</div>
+    <div class="sc-modal-grid">
+      ${SHORTCUTS.map(sh => `
+      <div class="sc-key" onclick="${sh.id==='home'?'goHome()':'openMod(&quot;'+sh.id+'&quot;)'};document.getElementById('sc-modal-overlay')?.remove()">
+        <div class="kbd">${sh.key}</div>
+        <div class="sc-key-label">${sh.label}</div>
+      </div>`).join('')}
+      <div class="sc-key" onclick="document.getElementById('sc-modal-overlay')?.remove()">
+        <div class="kbd">?</div><div class="sc-key-label">This panel</div>
+      </div>
+    </div>
+    <div style="margin-top:12px;padding-top:10px;border-top:0.5px solid var(--border);font-size:10px;color:var(--txt3);text-align:center">Works anywhere when not typing</div>
+  </div>`;
+  ov.addEventListener('click', e => { if (e.target === ov) ov.remove(); });
+  document.body.appendChild(ov);
+}
+
+/* ═══ TOUR ═══ */
+const TOUR_STEPS = [
+  { title:'Welcome, Super Admin! 🛡️',    desc:'Your admin portal is now connected to the live backend. All data shown is real-time from the database.',pos:'center',target:null },
+  { title:'App-style Module Icons',       desc:'Click any module icon to deep-dive. Data is fetched live from the API.',pos:'bottom',target:'icon-grid-tour' },
+  { title:'Terminal & Live Feed',         desc:'Monitor live events in real-time. Use the shell to run commands like "status", "managers", or "clear".',pos:'bottom',target:'terminal-panel' },
+  { title:'Sun / Moon Theme Toggle ☀️🌙',desc:'Click the sun icon in the nav to switch between dark and light mode. Your preference is saved.',pos:'bottom-right',target:'theme-btn' },
+  { title:'Keyboard Shortcuts ⌨️',       desc:'Press M for Managers, B for Branches, F for Fees, A for Analytics, H for Home, ? for shortcuts.',pos:'bottom-left',target:'shortcuts-btn' },
+];
+let tourStep = 0;
+function startTour() { tourStep = 0; renderTourStep(); }
+function renderTourStep() {
+  clearTour();
+  const step = TOUR_STEPS[tourStep]; if (!step) return;
+  const bd = document.createElement('div'); bd.id = 'tour-backdrop'; bd.className = 'tour-backdrop'; document.body.appendChild(bd);
+  let rect = null;
+  if (step.target) {
+    const el = step.target === 'icon-grid-tour' ? document.querySelector('.icon-grid') : document.getElementById(step.target);
+    if (el) {
+      rect = el.getBoundingClientRect();
+      const hl = document.createElement('div'); hl.id = 'tour-highlight'; hl.className = 'tour-highlight';
+      hl.style.cssText = `top:${rect.top-4}px;left:${rect.left-4}px;width:${rect.width+8}px;height:${rect.height+8}px`;
+      document.body.appendChild(hl);
+    }
+  }
+  const card = document.createElement('div'); card.id = 'tour-card'; card.className = 'tour-card';
+  const isLast = tourStep === TOUR_STEPS.length - 1;
+  card.innerHTML = `<div class="tour-step-label">Step ${tourStep+1} of ${TOUR_STEPS.length}</div>
+    <div class="tour-title">${step.title}</div>
+    <div class="tour-desc">${step.desc}</div>
+    <div class="tour-nav">
+      <div class="tour-dots">${TOUR_STEPS.map((_,i) => `<div class="tour-dot${i===tourStep?' active':''}"></div>`).join('')}</div>
+      <div class="tour-btns">
+        <div class="tour-btn" onclick="endTour()">Skip</div>
+        ${tourStep > 0 ? `<div class="tour-btn" onclick="tourPrev()">← Back</div>` : ''}
+        <div class="tour-btn primary" onclick="${isLast?'endTour()':'tourNext()'}">${isLast?'Done ✓':'Next →'}</div>
+      </div>
+    </div>`;
+  document.body.appendChild(card);
+  const cw = card.offsetWidth||280, ch = card.offsetHeight||160, vw = window.innerWidth, vh = window.innerHeight;
+  let top, left;
+  if (!rect || step.pos === 'center') { top = (vh-ch)/2; left = (vw-cw)/2; }
+  else if (step.pos.startsWith('bottom')) { top = Math.min(rect.bottom+14, vh-ch-12); left = step.pos==='bottom-right' ? Math.max(8, rect.right-cw) : step.pos==='bottom-left' ? Math.max(rect.left,8) : Math.max(8, Math.min(rect.left+(rect.width-cw)/2, vw-cw-8)); }
+  else { top = Math.max(8, rect.top-ch-14); left = Math.max(8, Math.min(rect.left+(rect.width-cw)/2, vw-cw-8)); }
+  card.style.cssText = `top:${top}px;left:${left}px`;
+}
+function tourNext() { tourStep++; renderTourStep(); }
+function tourPrev() { tourStep--; renderTourStep(); }
+function endTour() { clearTour(); toast('Tour done! Press ? for shortcuts 🚀'); }
+function clearTour() { ['tour-backdrop','tour-highlight','tour-card'].forEach(id => { const el = document.getElementById(id); if (el) el.remove(); }); }
+</script>
+</body>
+</html>
+Done
+
+

@@ -69,8 +69,9 @@ class _MapScreenState extends State<MapScreen> {
       setState(() {
         _apiMapSpaces = results.map((item) {
           final plans = item['pricingPlans'] as List?;
-          final firstPlanPrice = (plans != null && plans.isNotEmpty) ? plans[0]['basePrice'] : 199;
-          
+          final firstPlanPrice = (plans != null && plans.isNotEmpty) ? plans[0]['basePrice'] : 0;
+
+
           final images = item['images'] as List?;
           String imageUrl;
           if (images != null && images.any((img) => (img['order'] as int) >= 0)) {
@@ -93,13 +94,29 @@ class _MapScreenState extends State<MapScreen> {
 
           return _MapSpace(
             id: item['id'].toString(),
-            name: item['name'] ?? 'CoWork Space',
+            name: item['name']?.toString() ?? 'Unnamed Space',
             location: '${item['city'] ?? ''}, ${item['state'] ?? ''}',
-            price: '₹$firstPlanPrice/hour',
+            price: () {
+              if (plans == null || plans.isEmpty) return 'N/A';
+              final type = (plans[0]['type'] as String? ?? 'HOURLY').toLowerCase();
+              final suffix = type == 'hourly' ? '/hour' : type == 'daily' ? '/day' : type == 'weekly' ? '/week' : type == 'monthly' ? '/month' : '/hour';
+              return '₹$firstPlanPrice$suffix';
+            }(),
             type: item['type'] ?? 'hot_desk',
-            rating: 4.9,
+            rating: () {
+              final raw = item['rating'] ?? item['avgRating'];
+              if (raw is double) return raw;
+              if (raw is int) return raw.toDouble();
+              if (raw is String) return double.tryParse(raw) ?? 0.0;
+              return 0.0;
+            }(),
             coords: LatLng(lat, lng),
-            status: AvailabilityStatus.available,
+            status: () {
+              final raw = item['status'] ?? item['isActive'];
+              if (raw == 'ACTIVE' || raw == true) return AvailabilityStatus.available;
+              if (raw == 'FULL' || raw == 'OCCUPIED') return AvailabilityStatus.occupied;
+              return AvailabilityStatus.available;
+            }(),
             imageUrl: imageUrl,
           );
         }).toList();
@@ -133,12 +150,12 @@ class _MapScreenState extends State<MapScreen> {
     setState(() => _selectedSpace = null);
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text('Showing spaces near Mumbai',
+        content: Text('Showing nearby spaces',
             style: GoogleFonts.inter(fontSize: 13)),
         backgroundColor: AppColors.primaryContainer,
         behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-      ),
+      )
     );
   }
 
@@ -263,20 +280,6 @@ class _MapScreenState extends State<MapScreen> {
                         child: Icon(Icons.tune, color: AppColors.primary, size: 20),
                       ),
                     ),
-                  ]),
-                ),
-                const SizedBox(height: 8),
-                // Filters row
-                SingleChildScrollView(
-                  scrollDirection: Axis.horizontal,
-                  child: Row(children: [
-                    _FilterChip(label: 'All Spaces', isSelected: true),
-                    const SizedBox(width: 8),
-                    _FilterChip(label: 'Hot Desks'),
-                    const SizedBox(width: 8),
-                    _FilterChip(label: 'Cabins'),
-                    const SizedBox(width: 8),
-                    _FilterChip(label: 'Meeting Rooms'),
                   ]),
                 ),
               ],

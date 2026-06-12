@@ -167,10 +167,13 @@ const API = (() => {
     removeImage:    (imageId) => del(`/workspaces/images/${imageId}`),
     
     // Extra Services
-    getExtras:      (id)     => get(`/workspaces/${id}/extra-services`),
-    addExtra:       (id,dto) => post(`/workspaces/${id}/extra-services`, dto),
-    updateExtra:    (id,dto) => patch(`/workspaces/${id}/extra-services/${dto.id}`, dto), // note: backend route is `/workspaces/:wsId/extra-services/:id`
-    deleteExtra:    (wsId, id) => del(`/workspaces/${wsId}/extra-services/${id}`),
+    getExtras:      (id)     => get(`/workspaces/${id}/extra-services`, true),
+    getGlobalExtras:()       => get('/extra-services'),
+    addExtra:       (dto)    => post('/extra-services', dto),
+    updateExtra:    (id,dto) => patch(`/extra-services/${id}`, dto),
+    deleteExtra:    (id)     => del(`/extra-services/${id}`),
+    getWorkspaceExtras:(id)  => get(`/workspaces/${id}/extra-services/manage`),
+    toggleWorkspaceExtra:(wsId, id, isEnabled) => patch(`/workspaces/${wsId}/extra-services/${id}/toggle`, { isEnabled }),
   };
 
   // ─────────────────────────────────────────────────────────────────

@@ -10,8 +10,8 @@ class ConfirmationScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final spaceName = bookingData['spaceName'] ?? 'The Glass House';
-    final ref = bookingData['ref'] ?? 'DH-8829';
+    final spaceName = bookingData['spaceName']?.toString() ?? 'Workspace';
+    final ref = bookingData['ref']?.toString() ?? bookingData['bookingRef']?.toString() ?? 'N/A';
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -186,7 +186,7 @@ class _EPassTicket extends StatelessWidget {
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Text(
-                      'India',
+                      spaceName,
                       style: GoogleFonts.inter(
                         fontSize: 20,
                         fontWeight: FontWeight.w600,

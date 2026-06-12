@@ -1,7 +1,9 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../prisma/prisma.service';
-
+import * as admin from 'firebase-admin';
+import * as fs from 'fs';
+import * as path from 'path';
 @Injectable()
 export class NotificationsService {
   private readonly logger = new Logger(NotificationsService.name);
@@ -19,6 +21,11 @@ export class NotificationsService {
     type: string;
     data?: Record<string, any>;
   }) {
+    // Send FCM Push notification asynchronously
+    this.sendPushNotification(userId, payload.title, payload.body, payload.data).catch(err => {
+      this.logger.error('Error in sendPushNotification async call', err);
+    });
+
     return this.prisma.notification.create({
       data: {
         userId,
@@ -43,6 +50,71 @@ export class NotificationsService {
       data: { isRead: true },
     });
     return { message: 'Marked as read' };
+  }
+
+  async registerFcmToken(userId: string, fcmToken: string) {
+    await this.prisma.user.update({
+      where: { id: userId },
+      data: { fcmToken },
+    });
+    return { message: 'FCM token registered successfully' };
+  }
+
+  async getAll(userId: string) {
+    return this.prisma.notification.findMany({
+      where: { userId },
+      orderBy: { createdAt: 'desc' },
+    });
+  }
+
+  private ensureFirebaseInitialized(): boolean {
+    if (admin.apps.length > 0) return true;
+    try {
+      const saPath = path.join(process.cwd(), 'firebase-service-account.json');
+      if (fs.existsSync(saPath)) {
+        admin.initializeApp({
+          credential: admin.credential.cert(saPath),
+        });
+        this.logger.log('Firebase Admin initialized for Push Notifications.');
+        return true;
+      }
+    } catch (e) {
+      this.logger.warn('Firebase Admin failed to initialize:', e);
+    }
+    return false;
+  }
+
+  async sendPushNotification(userId: string, title: string, body: string, data?: Record<string, any>) {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { fcmToken: true },
+    });
+
+    if (!user?.fcmToken) {
+      return;
+    }
+
+    const firebaseInitialized = this.ensureFirebaseInitialized();
+    if (!firebaseInitialized) {
+      this.logger.warn('Firebase Admin not initialized — skipping push');
+      return;
+    }
+
+    try {
+      const messageData = data ? Object.entries(data).reduce((acc, [key, val]) => {
+        acc[key] = String(val);
+        return acc;
+      }, {} as Record<string, string>) : {};
+
+      await admin.messaging().send({
+        token: user.fcmToken,
+        notification: { title, body },
+        data: messageData,
+      });
+      this.logger.log(`Push notification sent successfully to user ${userId}`);
+    } catch (error) {
+      this.logger.error(`Failed to send push notification to user ${userId}:`, error);
+    }
   }
 
   // ── WhatsApp (WATI) ───────────────────────────────────────────────

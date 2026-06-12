@@ -9,9 +9,11 @@ const App = (() => {
   let currentUser = null;
   let isLight = false;
   let ddOpen = false;
+  let currentMod = null;
   let activeTab = 'login';
   let activePoll = null;
   let currentBookingStatus = 'PENDING';
+  let selectedExtrasWorkspaceId = null;
 
   /* ═══ TOAST ═══ */
   function toast(msg) {
@@ -19,6 +21,14 @@ const App = (() => {
     const t = document.createElement('div');
     t.className = 'toast'; t.textContent = msg;
     w.appendChild(t); setTimeout(() => t.remove(), 2400);
+  }
+
+  function setHtml(el, html) {
+    if (!el) return;
+    if (el._rawHTML !== html) {
+      el.innerHTML = html;
+      el._rawHTML = html;
+    }
   }
 
   function toastErr(msg) {
@@ -60,7 +70,7 @@ const App = (() => {
     if (activeTab === 'login') {
       fb.innerHTML = `
       <div class="auth-field"><label>Email</label><input id="li-email" type="email" placeholder="manager@coworkhq.in" autocomplete="email"></div>
-      <div class="auth-field"><label>Password</label><input id="li-pass" type="password" placeholder="••••••••" autocomplete="current-password"></div>
+      <div class="auth-field"><label>Password</label><div style="position:relative;display:flex;align-items:center"><input id="li-pass" type="password" placeholder="••••••••" autocomplete="current-password" style="width:100%;padding-right:40px"><button type="button" onclick="(function(){var i=document.getElementById('li-pass');i.type=i.type==='password'?'text':'password';this.textContent=i.type==='password'?'👁':'🙈'}).call(this)" style="position:absolute;right:10px;background:none;border:none;cursor:pointer;font-size:16px;color:var(--text-muted,#aaa);padding:0;line-height:1">👁</button></div></div>
       <div id="auth-err" style="font-size:11px;color:#f87171;text-align:center;min-height:16px;margin-bottom:4px"></div>
       <button class="auth-btn" id="login-btn" onclick="App.doLogin()">Login →</button>
       <div class="auth-hint">Don't have an account? <span onclick="App.switchTab('signup')">Sign Up</span></div>`;
@@ -70,7 +80,7 @@ const App = (() => {
       <div class="auth-field"><label>Full Name</label><input id="su-name" type="text" placeholder="Your Name" autocomplete="name"></div>
       <div class="auth-field"><label>Business Name</label><input id="su-biz" type="text" placeholder="Your Business (optional)"></div>
       <div class="auth-field"><label>Email</label><input id="su-email" type="email" placeholder="manager@business.com" autocomplete="email"></div>
-      <div class="auth-field"><label>Password</label><input id="su-pass" type="password" placeholder="Min 8 characters" autocomplete="new-password"></div>
+      <div class="auth-field"><label>Password</label><div style="position:relative;display:flex;align-items:center"><input id="su-pass" type="password" placeholder="Min 8 characters" autocomplete="new-password" style="width:100%;padding-right:40px"><button type="button" onclick="(function(){var i=document.getElementById('su-pass');i.type=i.type==='password'?'text':'password';this.textContent=i.type==='password'?'👁':'🙈'}).call(this)" style="position:absolute;right:10px;background:none;border:none;cursor:pointer;font-size:16px;color:var(--text-muted,#aaa);padding:0;line-height:1">👁</button></div></div>
       <div id="auth-err" style="font-size:11px;color:#f87171;text-align:center;min-height:16px;margin-bottom:4px"></div>
       <button class="auth-btn" id="signup-btn" onclick="App.doSignup()">Create Account →</button>
       <div class="auth-hint">Already have an account? <span onclick="App.switchTab('login')">Login</span></div>`;
@@ -135,7 +145,10 @@ const App = (() => {
     goHome();
     toast(`Welcome, ${currentUser?.name?.split(' ')[0] || 'Manager'}! 🎉`);
     setupKeyboardShortcuts();
-    setTimeout(() => startTour(), 700);
+    
+    if (!localStorage.getItem('tour_seen_' + currentUser?.id)) {
+      setTimeout(() => startTour(), 700);
+    }
   }
 
   function logout() {
@@ -155,7 +168,11 @@ const App = (() => {
     const av = document.getElementById('nav-av');
     if (currentUser?.name) {
       av.textContent = currentUser.name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase();
-    } else { av.textContent = '?'; }
+    } else if (currentUser?.email) {
+      av.textContent = currentUser.email.substring(0, 2).toUpperCase();
+    } else { 
+      av.textContent = 'M'; 
+    }
   }
 
   function toggleDD() {
@@ -301,6 +318,7 @@ const App = (() => {
 
   /* ═══ HOME ═══ */
   async function goHome() {
+    currentMod = 'home';
     const c = document.getElementById('content');
     const name = currentUser?.name?.split(' ')[0] || 'Manager';
     // Render skeleton immediately, then hydrate with live data
@@ -375,6 +393,7 @@ const App = (() => {
 
   /* ═══ MODULE SHELL ═══ */
   function openMod(id) {
+    currentMod = id;
     if (activePoll) { clearInterval(activePoll); activePoll = null; }
     const m = MODS.find(x => x.id === id); if (!m) return;
     const c = document.getElementById('content'); c.innerHTML = '';
@@ -394,15 +413,29 @@ const App = (() => {
     const R = {
       dashboard: rDash, workspace: rWS, bookings: rBook, payments: rPay,
       issues: rIss, staff: rStaff, customers: rCust, notifications: rNotif,
-      analytics: rAnalytics, coupons: rCoupons, extras: rExtras, settings: rSettings,
+      analytics: rAnalytics, coupons: rCoupons, extras: rExtrasNew, settings: rSettings,
     };
-    (R[id] || rEmpty)(body, document.getElementById('dbtns'));
+    
+    const renderFunc = R[id] || rEmpty;
+    renderFunc(body, document.getElementById('dbtns'));
+    
+    // Global auto-refresh every 10 seconds for real-time updates
+    if (id !== 'settings' && id !== 'workspace') { // Don't poll forms/settings
+      activePoll = setInterval(() => {
+        const bEl = document.getElementById('dbody');
+        const btnsEl = document.getElementById('dbtns');
+        // Only run if the modal isn't open over the list
+        if (bEl && !document.querySelector('[id$="-modal-overlay"]')) {
+           renderFunc(bEl, btnsEl, true); // true = silent refresh
+        }
+      }, 10000);
+    }
   }
 
   function rEmpty(b) { b.innerHTML = '<div style="padding:40px;text-align:center;color:var(--txt3);font-size:13px">Coming soon</div>'; }
 
   /* ─────────── DASHBOARD ─────────── */
-  async function rDash(b, btns) {
+  async function rDash(b, btns, isSilent = false) {
     btns.innerHTML = `<button class="dbtn pr" onclick="App.openMod('analytics')">View Analytics →</button>`;
     try {
       const res = await API.workspaces.getDashboard();
@@ -420,12 +453,12 @@ const App = (() => {
         <div style="padding:20px;text-align:center;color:var(--txt3);font-size:12px">Open Bookings or Analytics for detailed charts.</div>
       </div>`;
     } catch (err) {
-      b.innerHTML = errCard(err.message);
+      setHtml(b, errCard(err.message));
     }
   }
 
   /* ─────────── WORKSPACES ─────────── */
-  async function rWS(b, btns) {
+  async function rWS(b, btns, isSilent = false) {
     btns.innerHTML = `
       <button class="dbtn" onclick="App.openCreateWorkspacePage()">+ Add Workspace</button>
       <button class="dbtn pr" onclick="App.showGenQrModal()">📱 Gen QR</button>
@@ -434,7 +467,7 @@ const App = (() => {
       const res = await API.workspaces.getMy();
       const list = res?.data || res || [];
       if (!list.length) {
-        b.innerHTML = emptyCard('No workspaces yet. Click "+ Add Workspace" to create your first one.');
+        setHtml(b, emptyCard('No workspaces yet. Click "+ Add Workspace" to create your first one.'));
         return;
       }
       b.innerHTML = `
@@ -460,29 +493,27 @@ const App = (() => {
         </div>`).join('')}
       </div>`;
     } catch (err) {
-      b.innerHTML = errCard(err.message);
+      setHtml(b, errCard(err.message));
     }
   }
 
   /* ─────────── BOOKINGS ─────────── */
-  async function rBook(b, btns) {
-    btns.innerHTML = `
-      <button class="dbtn" id="book-filter-pending" onclick="App.loadBookings('PENDING')">Pending</button>
-      <button class="dbtn" id="book-filter-all"     onclick="App.loadBookings('')">All</button>`;
-    await loadBookings('PENDING', b);
-
-    if (activePoll) { clearInterval(activePoll); activePoll = null; }
-    activePoll = setInterval(() => {
-      const bEl = document.getElementById('dbody');
-      if (bEl) loadBookings(currentBookingStatus, bEl, true);
-    }, 10000);
+  async function rBook(b, btns, isSilent = false) {
+    if (!isSilent) {
+      const pAct = currentBookingStatus === 'PENDING' ? 'background:var(--accent);color:#fff;border-color:var(--accent)' : '';
+      const aAct = currentBookingStatus === '' ? 'background:var(--accent);color:#fff;border-color:var(--accent)' : '';
+      btns.innerHTML = `
+        <button class="dbtn" id="book-filter-pending" style="${pAct}" onclick="App.loadBookings('PENDING');App.openMod('bookings')">Pending</button>
+        <button class="dbtn" id="book-filter-all"     style="${aAct}" onclick="App.loadBookings('');App.openMod('bookings')">All</button>`;
+    }
+    await loadBookings(currentBookingStatus, b, isSilent);
   }
 
   async function loadBookings(status, bEl, isSilent = false) {
     currentBookingStatus = status;
     const b = bEl || document.getElementById('dbody');
     if (!b) return;
-    if (!isSilent) b.innerHTML = loadingCard();
+    if (!isSilent) setHtml(b, loadingCard());
     try {
       const res = await API.bookings.getManagerBookings(status);
       const list = res?.data || res || [];
@@ -519,7 +550,7 @@ const App = (() => {
         }).join('') : `<div style="padding:24px;text-align:center;color:var(--txt3);font-size:12px">No bookings found.</div>`}
       </div>`;
     } catch (err) {
-      b.innerHTML = errCard(err.message);
+      setHtml(b, errCard(err.message));
     }
   }
 
@@ -544,9 +575,9 @@ const App = (() => {
   }
 
   /* ─────────── PAYMENTS ─────────── */
-  async function rPay(b, btns) {
+  async function rPay(b, btns, isSilent = false) {
     btns.innerHTML = `<button class="dbtn" onclick="App.payPlatformFee()">Pay Platform Fee</button>`;
-    b.innerHTML = loadingCard();
+    if (!isSilent) setHtml(b, loadingCard());
     try {
       const res = await API.payments.getManagerPayments();
       const list = res?.data || res || [];
@@ -578,7 +609,7 @@ const App = (() => {
         }).join('') : `<div style="padding:24px;text-align:center;color:var(--txt3);font-size:12px">No payment records yet.</div>`}
       </div>`;
     } catch (err) {
-      b.innerHTML = errCard(err.message);
+      setHtml(b, errCard(err.message));
     }
   }
 
@@ -593,15 +624,15 @@ const App = (() => {
   }
 
   /* ─────────── ISSUES ─────────── */
-  async function rIss(b, btns) {
+  async function rIss(b, btns, isSilent = false) {
     btns.innerHTML = `<button class="dbtn pr" onclick="App.openMod('workspace')">Get Workspace ID</button>`;
     // Fetch first workspace to load issues for
-    b.innerHTML = loadingCard();
+    if (!isSilent) setHtml(b, loadingCard());
     try {
       const wsRes = await API.workspaces.getMy();
       const wsList = wsRes?.data || wsRes || [];
       if (!wsList.length) {
-        b.innerHTML = emptyCard('No workspaces found. Create a workspace first to track issues.');
+        setHtml(b, emptyCard('No workspaces found. Create a workspace first to track issues.'));
         return;
       }
       const wsId = wsList[0].id;
@@ -636,7 +667,7 @@ const App = (() => {
         }).join('') : `<div style="padding:24px;text-align:center;color:var(--txt3);font-size:12px;grid-column:1/-1">No issues found. All clear! ✅</div>`}
       </div>`;
     } catch (err) {
-      b.innerHTML = errCard(err.message);
+      setHtml(b, errCard(err.message));
     }
   }
 
@@ -645,14 +676,14 @@ const App = (() => {
     try {
       await API.issues.escalate(id);
       toast('Issue escalated to admin ⚠️');
-      openMod('issues');
+      if (currentMod === 'issues') openMod('issues');
     } catch (err) { toastErr(err.message); btn.disabled = false; btn.textContent = 'Escalate'; }
   }
 
   /* ─────────── STAFF ─────────── */
-  async function rStaff(b, btns) {
+  async function rStaff(b, btns, isSilent = false) {
     btns.innerHTML = `<button class="dbtn pr" id="gen-code-btn" onclick="App.genStaffCode()">Gen Invite Code</button>`;
-    b.innerHTML = loadingCard();
+    if (!isSilent) setHtml(b, loadingCard());
     try {
       const res = await API.workspaces.getMyStaff();
       const list = res?.data || res || [];
@@ -685,7 +716,7 @@ const App = (() => {
         }).join('') : `<div style="padding:24px;text-align:center;color:var(--txt3);font-size:12px;grid-column:1/-1">No staff yet. Generate an invite code to onboard your team.</div>`}
       </div>`;
     } catch (err) {
-      b.innerHTML = errCard(err.message);
+      setHtml(b, errCard(err.message));
     }
   }
 
@@ -722,9 +753,9 @@ const App = (() => {
   }
 
   /* ─────────── CUSTOMERS ─────────── */
-  async function rCust(b, btns) {
+  async function rCust(b, btns, isSilent = false) {
     btns.innerHTML = `<button class="dbtn pr" onclick="App.showWarnModal()">Issue Warning</button>`;
-    b.innerHTML = loadingCard();
+    if (!isSilent) setHtml(b, loadingCard());
     try {
       const res = await API.users.getManagerCustomers();
       const list = res?.data || res || [];
@@ -747,7 +778,7 @@ const App = (() => {
         </div>`) .join('') : `<div style="padding:24px;text-align:center;color:var(--txt3);font-size:12px">No customers found yet.</div>`}
       </div>`;
     } catch (err) {
-      b.innerHTML = errCard(err.message);
+      setHtml(b, errCard(err.message));
     }
   }
 
@@ -757,14 +788,14 @@ const App = (() => {
     const reason = prompt('Warning reason:');
     if (!reason) return;
     API.users.warnCustomer({ customerId, reason })
-      .then(() => { toast('Warning issued'); openMod('customers'); })
+      .then(() => { toast('Warning issued'); if (currentMod === 'customers') openMod('customers'); })
       .catch(err => toastErr(err.message));
   }
 
   /* ─────────── NOTIFICATIONS ─────────── */
-  async function rNotif(b, btns) {
+  async function rNotif(b, btns, isSilent = false) {
     btns.innerHTML = `<button class="dbtn" onclick="App.markAllRead()">✓ Mark All Read</button>`;
-    b.innerHTML = loadingCard();
+    if (!isSilent) setHtml(b, loadingCard());
     try {
       const res = await API.notifications.getUnread();
       const list = res?.data || res || [];
@@ -788,7 +819,7 @@ const App = (() => {
         </div>`) .join('') : `<div style="padding:24px;text-align:center;color:var(--txt3);font-size:12px">No unread notifications. All clear! ✅</div>`}
       </div>`;
     } catch (err) {
-      b.innerHTML = errCard(err.message);
+      setHtml(b, errCard(err.message));
     }
   }
 
@@ -799,45 +830,212 @@ const App = (() => {
       const ids = list.map(n => n.id);
       if (ids.length) await API.notifications.markRead(ids);
       toast('All notifications marked as read ✓');
-      openMod('notifications');
+      if (currentMod === 'notifications') openMod('notifications');
     } catch (err) { toastErr(err.message); }
   }
 
   /* ─────────── ANALYTICS ─────────── */
-  async function rAnalytics(b, btns) {
+  async function rAnalytics(b, btns, isSilent = false) {
     btns.innerHTML = `<button class="dbtn" onclick="App.toast('Export coming soon!')">Export PDF</button>`;
-    b.innerHTML = loadingCard();
+    if (!isSilent) setHtml(b, loadingCard());
     try {
-      const res = await API.workspaces.getDashboard();
-      const d   = res?.data || res || {};
-      const days  = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
-      const hours = ['8a','9a','10a','11a','12p','1p','2p','3p','4p','5p','6p','7p'];
-      const heat  = [[20,45,88,94,82,65,78,85,80,60,35,20],[15,50,92,98,88,70,82,90,85,65,40,18],[18,42,85,90,78,60,72,80,75,55,30,15],[22,48,90,95,85,68,80,88,82,62,38,18],[25,52,88,92,80,64,76,84,78,58,32,16],[10,20,45,60,55,48,50,55,48,35,22,12],[8,15,35,48,42,38,40,44,38,28,18,10]];
-      const hc    = v => v<20?'#1a1f2e':v<40?'#1e2b4a':v<60?'#3b5bdb':v<80?'#4f46e5':'#818cf8';
+      const [dashRes, bookRes, wsRes] = await Promise.all([
+        API.workspaces.getDashboard(),
+        API.bookings.getManagerBookings('').catch(() => ({ data: [] })),
+        API.workspaces.getMy().catch(() => ({ data: [] })),
+      ]);
+      const d      = dashRes?.data || dashRes || {};
+      const bkList = bookRes?.data || bookRes || [];
+      const wsList = wsRes?.data   || wsRes   || [];
+
+      // Revenue by workspace
+      const revByWs = {};
+      wsList.forEach(w => { revByWs[w.name] = 0; });
+      bkList.forEach(bk => {
+        if (bk.status === 'CONFIRMED' && bk.totalAmount) {
+          const wsName = bk.workspace?.name || bk.desk?.workspace?.name || 'Unknown';
+          revByWs[wsName] = (revByWs[wsName] || 0) + Number(bk.totalAmount);
+        }
+      });
+
+      // Bookings by day of week
+      const dow = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+      const dowCounts = [0,0,0,0,0,0,0];
+      bkList.forEach(bk => {
+        const day = new Date(bk.createdAt).getDay();
+        if (!isNaN(day)) dowCounts[day]++;
+      });
+      const maxDow = Math.max(...dowCounts, 1);
+
+      // Status breakdown
+      const statusBreakdown = {
+        CONFIRMED: bkList.filter(b=>b.status==='CONFIRMED').length,
+        PENDING:   bkList.filter(b=>b.status==='PENDING').length,
+        CANCELLED: bkList.filter(b=>b.status==='CANCELLED').length,
+      };
+      const totalBk = bkList.length || 1;
+
+      // Revenue trend: last 7 days
+      const revByDay = {};
+      const today = new Date(); today.setHours(0,0,0,0);
+      for (let i=6; i>=0; i--) {
+        const d2 = new Date(today); d2.setDate(d2.getDate()-i);
+        revByDay[d2.toISOString().split('T')[0]] = 0;
+      }
+      bkList.forEach(bk => {
+        const dk = (bk.createdAt||'').split('T')[0];
+        if (dk in revByDay && bk.status==='CONFIRMED') revByDay[dk] += Number(bk.totalAmount||0);
+      });
+      const revDays = Object.entries(revByDay);
+      const maxRev = Math.max(...revDays.map(([,v])=>v), 1);
+      const wsRevEntries = Object.entries(revByWs).filter(([,v])=>v>0);
+      const maxWsRev = Math.max(...wsRevEntries.map(([,v])=>v), 1);
+
       b.innerHTML = `
-      <div class="g4">${[
-        ['Total Revenue',   `₹${fmtNum(Number(d.totalRevenue||0))}`, 'All time',  '#818cf8'],
-        ['Total Bookings',  d.totalBookings??'—',                    'All time',  '#34d399'],
-        ['Pending',         d.pendingBookings??'—',                  'Approval',  '#fbbf24'],
-        ['Workspaces',      d.workspaces??'—',                       'Active',    '#818cf8'],
-      ].map(([l,v,s,c]) => `<div class="sc"><div class="sc-lb">${l}</div><div class="sc-v" style="color:${c};font-size:${String(v).length>6?'13px':'18px'}">${v}</div><div class="sc-s">${s}</div></div>`).join('')}</div>
-      <div class="cc"><div class="cc-ttl">Occupancy Heatmap — Hourly (Live data pending)</div><div style="overflow-x:auto"><div style="display:grid;grid-template-columns:34px repeat(12,1fr);gap:3px;min-width:460px;margin-top:6px">
-        <div></div>${hours.map(h=>`<div style="text-align:center;font-size:9px;color:var(--txt3);font-weight:600;padding-bottom:3px">${h}</div>`).join('')}
-        ${days.map((d,di)=>`<div style="font-size:10px;color:var(--txt3);display:flex;align-items:center;justify-content:flex-end;padding-right:5px">${d}</div>${heat[di].map(v=>`<div style="height:18px;border-radius:3px;background:${hc(v)}" title="${v}%"></div>`).join('')}`).join('')}
-      </div></div></div>`;
+      <!-- KPI Row -->
+      <div class="g4" style="margin-bottom:16px">${[
+        ['Total Revenue',   `₹${fmtNum(Number(d.totalRevenue||0))}`,
+          'Money earned from all confirmed bookings.',           '#818cf8', '💰'],
+        ['Total Bookings',  String(d.totalBookings??bkList.length),
+          'All bookings ever made — high numbers = strong demand.',  '#34d399', '📅'],
+        ['Pending',         String(d.pendingBookings??statusBreakdown.PENDING),
+          'Bookings awaiting your approval. Approve quickly.',   '#fbbf24', '⏳'],
+        ['Active Spaces',   String(d.workspaces??wsList.filter(w=>w.status==='ACTIVE').length),
+          'Workspaces currently live for booking.',              '#38bdf8', '🏢'],
+      ].map(([l,v,insight,c,ic]) => `
+        <div class="sc" style="position:relative;overflow:hidden">
+          <div style="position:absolute;top:10px;right:12px;font-size:18px;opacity:0.15">${ic}</div>
+          <div class="sc-lb">${l}</div>
+          <div class="sc-v" style="color:${c};font-size:${String(v).length>6?'14px':'20px'}">${v}</div>
+          <div class="sc-s" style="font-size:9px;line-height:1.3">${insight}</div>
+        </div>`).join('')}</div>
+
+      <!-- Charts Row -->
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px">
+        <!-- Revenue Last 7 Days -->
+        <div class="cc">
+          <div class="cc-ttl">📈 Revenue — Last 7 Days
+            <span style="float:right;font-size:9px;color:var(--txt3);font-weight:400">Spot your busiest days</span>
+          </div>
+          <div style="display:flex;align-items:flex-end;gap:6px;height:90px;padding:10px 0 0">
+            ${revDays.map(([dk,rv]) => {
+              const pct = Math.round((rv/maxRev)*100);
+              const label = new Date(dk+'T00:00:00').toLocaleDateString('en-IN',{weekday:'short'});
+              return `<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:3px">
+                <div style="font-size:8px;color:var(--txt3)">${rv>0?'₹'+fmtNum(rv):''}</div>
+                <div style="width:100%;background:var(--border2);border-radius:4px 4px 0 0;height:60px;display:flex;align-items:flex-end">
+                  <div style="width:100%;height:${Math.max(pct,2)}%;background:linear-gradient(180deg,#818cf8,#4f46e5);border-radius:4px 4px 0 0;min-height:3px"></div>
+                </div>
+                <div style="font-size:8px;color:var(--txt3)">${label}</div>
+              </div>`;
+            }).join('')}
+          </div>
+          <div style="font-size:9px;color:var(--txt3);margin-top:6px;text-align:center">
+            Total: <strong style="color:var(--txt)">₹${fmtNum(revDays.reduce((a,[,v])=>a+v,0))}</strong> this week
+          </div>
+        </div>
+        <!-- Bookings by Day of Week -->
+        <div class="cc">
+          <div class="cc-ttl">📊 Bookings by Day of Week
+            <span style="float:right;font-size:9px;color:var(--txt3);font-weight:400">Plan staffing around peak days</span>
+          </div>
+          <div style="display:flex;align-items:flex-end;gap:6px;height:90px;padding:10px 0 0">
+            ${dow.map((label, i) => {
+              const cnt = dowCounts[i];
+              const pct = Math.round((cnt/maxDow)*100);
+              return `<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:3px">
+                <div style="font-size:8px;color:var(--txt3)">${cnt||''}</div>
+                <div style="width:100%;background:var(--border2);border-radius:4px 4px 0 0;height:60px;display:flex;align-items:flex-end">
+                  <div style="width:100%;height:${Math.max(pct,2)}%;background:linear-gradient(180deg,#34d399,#059669);border-radius:4px 4px 0 0;min-height:3px"></div>
+                </div>
+                <div style="font-size:8px;color:var(--txt3)">${label}</div>
+              </div>`;
+            }).join('')}
+          </div>
+          <div style="font-size:9px;color:var(--txt3);margin-top:6px;text-align:center">
+            Peak day: <strong style="color:var(--txt)">${dow[dowCounts.indexOf(Math.max(...dowCounts))]}</strong>
+          </div>
+        </div>
+      </div>
+
+      <!-- Second Row -->
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+        <!-- Booking Status Donut -->
+        <div class="cc">
+          <div class="cc-ttl">🍩 Booking Status Breakdown
+            <span style="float:right;font-size:9px;color:var(--txt3);font-weight:400">High cancellations? Try flexible pricing</span>
+          </div>
+          <div style="display:flex;gap:16px;align-items:center;padding:10px 0">
+            <div style="position:relative;width:80px;height:80px;flex-shrink:0">
+              <svg viewBox="0 0 36 36" style="width:80px;height:80px;transform:rotate(-90deg)">
+                ${(() => {
+                  const colors = { CONFIRMED:'#34d399', PENDING:'#fbbf24', CANCELLED:'#f87171' };
+                  let offset = 0;
+                  return Object.entries(statusBreakdown).map(([st, cnt]) => {
+                    const pct = (cnt/totalBk)*100;
+                    const seg = `<circle cx="18" cy="18" r="15.9" fill="none" stroke="${colors[st]}" stroke-width="3.5"
+                      stroke-dasharray="${pct} ${100-pct}" stroke-dashoffset="-${offset}" style="transition:stroke-dasharray .3s"/>`;
+                    offset += pct;
+                    return seg;
+                  }).join('');
+                })()}
+              </svg>
+              <div style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center">
+                <div style="font-size:14px;font-weight:800;color:var(--txt)">${bkList.length}</div>
+                <div style="font-size:8px;color:var(--txt3)">total</div>
+              </div>
+            </div>
+            <div style="flex:1;display:flex;flex-direction:column;gap:7px">
+              ${Object.entries(statusBreakdown).map(([st, cnt]) => {
+                const colors = { CONFIRMED:'#34d399', PENDING:'#fbbf24', CANCELLED:'#f87171' };
+                const pct = Math.round((cnt/totalBk)*100);
+                return `<div>
+                  <div style="display:flex;justify-content:space-between;font-size:10px;margin-bottom:3px">
+                    <span style="color:${colors[st]};font-weight:700">${st}</span>
+                    <span style="color:var(--txt2)">${cnt} (${pct}%)</span>
+                  </div>
+                  <div style="height:4px;background:var(--border2);border-radius:2px">
+                    <div style="height:100%;width:${pct}%;background:${colors[st]};border-radius:2px"></div>
+                  </div>
+                </div>`;
+              }).join('')}
+            </div>
+          </div>
+        </div>
+        <!-- Revenue by Workspace -->
+        <div class="cc">
+          <div class="cc-ttl">🏢 Revenue by Workspace
+            <span style="float:right;font-size:9px;color:var(--txt3);font-weight:400">Identify top earners</span>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:8px;padding:10px 0">
+            ${wsRevEntries.length ? wsRevEntries.sort((a,b)=>b[1]-a[1]).slice(0,5).map(([name, rev]) => {
+              const pct = Math.round((rev/maxWsRev)*100);
+              return `<div>
+                <div style="display:flex;justify-content:space-between;font-size:10px;margin-bottom:3px">
+                  <span style="color:var(--txt2);font-weight:600;max-width:55%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${name}</span>
+                  <span style="color:#818cf8;font-weight:700">₹${fmtNum(rev)}</span>
+                </div>
+                <div style="height:6px;background:var(--border2);border-radius:3px">
+                  <div style="height:100%;width:${pct}%;background:linear-gradient(90deg,#818cf8,#4f46e5);border-radius:3px"></div>
+                </div>
+              </div>`;
+            }).join('') : `<div style="padding:20px 0;text-align:center;color:var(--txt3);font-size:11px">No confirmed bookings with revenue yet.<br>Revenue will appear here once bookings are approved.</div>`}
+          </div>
+        </div>
+      </div>`;
     } catch (err) {
-      b.innerHTML = errCard(err.message);
+      setHtml(b, errCard(err.message));
     }
   }
 
   /* ─────────── COUPONS ─────────── */
-  async function rCoupons(b, btns) {
+  async function rCoupons(b, btns, isSilent = false) {
     btns.innerHTML = `<button class="dbtn pr" onclick="App.showAddCouponModal()">+ Coupon</button>`;
-    b.innerHTML = loadingCard();
+    if (!isSilent) setHtml(b, loadingCard());
     try {
       const wsRes = await API.workspaces.getMy();
       const wsList = wsRes?.data || wsRes || [];
-      if (!wsList.length) { b.innerHTML = emptyCard('Create a workspace first.'); return; }
+      if (!wsList.length) { setHtml(b, emptyCard('Create a workspace first.')); return; }
       const wsId = wsList[0].id;
       const res = await API.workspaces.getCoupons(wsId);
       const list = res?.data || res || [];
@@ -850,24 +1048,26 @@ const App = (() => {
       ].map(([l,v,s,c]) => `<div class="sc"><div class="sc-lb">${l}</div><div class="sc-v" style="color:${c}">${v}</div><div class="sc-s">${s}</div></div>`).join('')}</div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
         ${list.length ? list.map(c => {
-          const disc = c.discountPercent ? `${c.discountPercent}% off` : c.discountFlat ? `₹${c.discountFlat} off` : '—';
-          const pct  = c.maxUses ? Math.min(100, Math.round((c.usedCount||0)/c.maxUses*100)) : 0;
-          return `<div style="background:var(--bg2);border:0.5px dashed var(--border2);border-radius:10px;padding:12px;display:flex;gap:10px;align-items:center">
-            <div style="text-align:center;padding:8px 10px;background:var(--bg3);border-radius:7px;border-right:1.5px dashed var(--border2)">
-              <div style="font-size:11px;font-weight:800;font-family:monospace;color:#818cf8;letter-spacing:1px">${c.code}</div>
-              <div style="font-size:8px;color:var(--txt3);margin-top:1px">COUPON</div>
-            </div>
-            <div style="flex:1">
-              <div style="font-size:14px;font-weight:800;color:var(--txt)">${disc}</div>
-              <div style="display:flex;justify-content:space-between;font-size:10px;color:var(--txt3);margin-top:2px"><span>${c.usedCount||0}/${c.maxUses} used</span><span class="badge ${c.isActive?'bs':'be'}">${c.isActive?'Active':'Off'}</span></div>
-              <div class="pt" style="margin-top:5px"><div class="pf" style="width:${pct}%;background:#4f46e5"></div></div>
-            </div>
-            <button onclick="App.deleteCoupon('${c.id}', this)" style="position:absolute;top:10px;right:10px;background:rgba(248,113,113,0.1);color:#f87171;border:0.5px solid rgba(248,113,113,0.3);border-radius:6px;width:24px;height:24px;display:flex;align-items:center;justify-content:center;cursor:pointer"><i class="ti ti-trash" style="font-size:12px"></i></button>
-          </div>`;
+                                              const disc = c.discountPercent ? `${c.discountPercent}% off` : c.discountFlat ? `?${c.discountFlat} off` : 'Discount';
+            const pct  = c.maxUses ? Math.min(100, Math.round((c.usedCount||0)/c.maxUses*100)) : 0;
+            const visibilityBadge = c.isPublic ? '<span style="background:rgba(52,211,153,.1);color:#34d399;padding:2px 4px;border-radius:4px;font-size:8px;font-weight:800;border:0.5px solid rgba(52,211,153,.3)">PUBLIC</span>' : '<span style="background:rgba(248,113,113,.1);color:#f87171;padding:2px 4px;border-radius:4px;font-size:8px;font-weight:800;border:0.5px solid rgba(248,113,113,.3)">PRIVATE</span>';
+            const minOrd = c.minOrderValue ? ` <span style="font-size:9px;color:var(--txt3);font-weight:400">(Min: ?${c.minOrderValue})</span>` : '';
+            return `<div style="background:var(--bg2);border:0.5px dashed var(--border2);border-radius:10px;padding:12px;display:flex;gap:10px;align-items:center;position:relative">
+              <div style="text-align:center;padding:8px 10px;background:var(--bg3);border-radius:7px;border-right:1.5px dashed var(--border2)">
+                <div style="font-size:11px;font-weight:800;font-family:monospace;color:#818cf8;letter-spacing:1px">${c.code}</div>
+                <div style="font-size:8px;color:var(--txt3);margin-top:1px">COUPON</div>
+              </div>
+              <div style="flex:1">
+                <div style="font-size:14px;font-weight:800;color:var(--txt)">${disc} ${visibilityBadge}${minOrd}</div>
+                <div style="display:flex;justify-content:space-between;font-size:10px;color:var(--txt3);margin-top:2px;align-items:center"><span>${c.usedCount || 0} / ${c.maxUses || '&infin;'} used</span><div style="display:flex;gap:4px;align-items:center"><span class="badge ${c.status === 'ACTIVE' ? 'active' : ''}">${c.status}</span></div></div>
+                <div class="pt" style="margin-top:5px"><div class="pf" style="width:${pct}%;background:#4f46e5"></div></div>
+              </div>
+              <button onclick="App.deleteCoupon('${c.id}', this)" style="position:absolute;top:10px;right:10px;background:rgba(248,113,113,0.1);color:#f87171;border:0.5px solid rgba(248,113,113,0.3);border-radius:6px;width:24px;height:24px;display:flex;align-items:center;justify-content:center;cursor:pointer"><i class="ti ti-trash" style="font-size:12px"></i></button>
+            </div>`;
         }).join('') : `<div style="padding:24px;text-align:center;color:var(--txt3);font-size:12px;grid-column:1/-1">No coupons yet. Click "+ Coupon" to create one.</div>`}
       </div>`;
     } catch (err) {
-      b.innerHTML = errCard(err.message);
+      setHtml(b, errCard(err.message));
     }
   }
 
@@ -883,7 +1083,12 @@ const App = (() => {
       <div style="font-size:14px;font-weight:800;color:var(--txt);margin-bottom:18px">Create Coupon</div>
       <div class="auth-field"><label>Coupon Code</label><input id="cp-code" type="text" placeholder="SUMMER20" style="width:100%;padding:9px 11px;background:var(--bg3);border:0.5px solid var(--border2);border-radius:8px;font-size:12px;color:var(--txt);outline:none;font-family:inherit"></div>
       <div class="auth-field"><label>Discount % (leave 0 for flat)</label><input id="cp-pct" type="number" placeholder="20" value="0" style="width:100%;padding:9px 11px;background:var(--bg3);border:0.5px solid var(--border2);border-radius:8px;font-size:12px;color:var(--txt);outline:none;font-family:inherit"></div>
-      <div class="auth-field"><label>Flat Discount ₹ (leave 0 for %)</label><input id="cp-flat" type="number" placeholder="0" value="0" style="width:100%;padding:9px 11px;background:var(--bg3);border:0.5px solid var(--border2);border-radius:8px;font-size:12px;color:var(--txt);outline:none;font-family:inherit"></div>
+              <div class="auth-field"><label>Flat Discount ? (leave 0 for %)</label><input id="cp-flat" type="number" placeholder="0" value="0" style="width:100%;padding:9px 11px;background:var(--bg3);border:0.5px solid var(--border2);border-radius:8px;font-size:12px;color:var(--txt);outline:none;font-family:inherit"></div>
+        <div class="auth-field"><label>Min Order Value ? (Optional)</label><input id="cp-min" type="number" placeholder="0" style="width:100%;padding:9px 11px;background:var(--bg3);border:0.5px solid var(--border2);border-radius:8px;font-size:12px;color:var(--txt);outline:none;font-family:inherit"></div>
+        <div class="auth-field" style="display:flex;align-items:center;gap:8px;margin-bottom:12px">
+          <input type="checkbox" id="cp-public" style="accent-color:var(--accent);width:16px;height:16px;cursor:pointer">
+          <label for="cp-public" style="margin:0;cursor:pointer;color:var(--txt2)">Public Coupon (Visible on checkout)</label>
+        </div>
       <div class="auth-field"><label>Max Uses</label><input id="cp-max" type="number" value="100" style="width:100%;padding:9px 11px;background:var(--bg3);border:0.5px solid var(--border2);border-radius:8px;font-size:12px;color:var(--txt);outline:none;font-family:inherit"></div>
       <div class="auth-field"><label>Valid From</label><input id="cp-from" type="date" style="width:100%;padding:9px 11px;background:var(--bg3);border:0.5px solid var(--border2);border-radius:8px;font-size:12px;color:var(--txt);outline:none;font-family:inherit"></div>
       <div class="auth-field"><label>Valid Until</label><input id="cp-until" type="date" style="width:100%;padding:9px 11px;background:var(--bg3);border:0.5px solid var(--border2);border-radius:8px;font-size:12px;color:var(--txt);outline:none;font-family:inherit"></div>
@@ -922,7 +1127,7 @@ const App = (() => {
       });
       btn.closest('div[style]').remove();
       toast('Coupon created! 🎟️');
-      openMod('coupons');
+      if (currentMod === 'coupons') openMod('coupons');
     } catch (err) {
       errEl.textContent = err.message;
       btn.disabled = false; btn.textContent = 'Create Coupon';
@@ -935,7 +1140,7 @@ const App = (() => {
     try {
       await API.workspaces.deleteCoupon(couponId);
       toast('Coupon deleted');
-      openMod('coupons');
+      if (currentMod === 'coupons') openMod('coupons');
     } catch (err) {
       toastErr(err.message);
       btn.disabled = false;
@@ -943,9 +1148,9 @@ const App = (() => {
   }
 
   /* ─────────── SETTINGS ─────────── */
-  async function rSettings(b, btns) {
+  async function rSettings(b, btns, isSilent = false) {
     btns.innerHTML = `<button class="dbtn pr" id="save-settings-btn" onclick="App.saveSettings()">Save Changes</button>`;
-    b.innerHTML = loadingCard();
+    if (!isSilent) setHtml(b, loadingCard());
     try {
       const res = await API.users.getMe();
       const u = res?.data || res || {};
@@ -991,7 +1196,7 @@ const App = (() => {
         </div>
       </div>`;
     } catch (err) {
-      b.innerHTML = errCard(err.message);
+      setHtml(b, errCard(err.message));
     }
   }
 
@@ -1113,13 +1318,28 @@ const App = (() => {
             <div class="auth-field"><label>City</label><input id="ws-city" type="text" placeholder="Pune" style="width:100%;padding:10px 13px;background:var(--bg3);border:0.5px solid var(--border2);border-radius:9px;font-size:12px;color:var(--txt);outline:none;font-family:inherit"></div>
             <div class="auth-field"><label>State</label><input id="ws-state" type="text" placeholder="Maharashtra" style="width:100%;padding:10px 13px;background:var(--bg3);border:0.5px solid var(--border2);border-radius:9px;font-size:12px;color:var(--txt);outline:none;font-family:inherit"></div>
           </div>
-          <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px">
-            <div class="auth-field"><label>Pincode</label><input id="ws-pin" type="text" placeholder="411001" style="width:100%;padding:10px 13px;background:var(--bg3);border:0.5px solid var(--border2);border-radius:9px;font-size:12px;color:var(--txt);outline:none;font-family:inherit"></div>
-            <div class="auth-field"><label>Latitude</label><input id="ws-lat" type="number" step="0.000001" placeholder="18.5204" style="width:100%;padding:10px 13px;background:var(--bg3);border:0.5px solid var(--border2);border-radius:9px;font-size:12px;color:var(--txt);outline:none;font-family:inherit"></div>
-            <div class="auth-field"><label>Longitude</label><input id="ws-lng" type="number" step="0.000001" placeholder="73.8567" style="width:100%;padding:10px 13px;background:var(--bg3);border:0.5px solid var(--border2);border-radius:9px;font-size:12px;color:var(--txt);outline:none;font-family:inherit"></div>
+                      <div style="display:grid;grid-template-columns:1fr;gap:10px">
+              <div class="auth-field"><label>Pincode</label><input id="ws-pin" type="text" placeholder="411001" style="width:100%;padding:10px 13px;background:var(--bg3);border:0.5px solid var(--border2);border-radius:9px;font-size:12px;color:var(--txt);outline:none;font-family:inherit"></div>
+            </div>
+            
+            <div style="margin-top:16px;margin-bottom:8px">
+              <div style="display:flex;justify-content:space-between;align-items:flex-end;margin-bottom:8px">
+                <label style="font-size:11px;font-weight:700;color:var(--txt2)">Pin Exact Location</label>
+                <div style="display:flex;gap:6px">
+                  <div style="position:relative">
+                    <input id="ws-map-search" type="text" placeholder="Search area..." style="padding:6px 10px;border-radius:6px;border:1px solid var(--border2);background:var(--bg3);font-size:10px;width:120px;outline:none" onkeydown="if(event.key==='Enter')App.searchMapLocation()">
+                    <button type="button" onclick="App.searchMapLocation()" style="position:absolute;right:2px;top:2px;bottom:2px;background:var(--accent2);color:#fff;border:none;border-radius:4px;padding:0 8px;font-size:10px;cursor:pointer"><i class="ti ti-search"></i></button>
+                  </div>
+                  <button type="button" onclick="App.detectLocation(event)" style="padding:6px 10px;background:var(--accent);color:#fff;border:none;border-radius:6px;font-size:10px;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:4px"><i class="ti ti-current-location"></i> Detect</button>
+                </div>
+              </div>
+              <div id="ws-map" style="width:100%;height:220px;border-radius:12px;border:1px solid var(--border2);z-index:1"></div>
+              <input type="hidden" id="ws-lat">
+              <input type="hidden" id="ws-lng">
+              <div style="font-size:9px;color:var(--txt3);margin-top:6px;text-align:right">Drag the marker to pinpoint the exact entrance.</div>
+            </div>
           </div>
-        </div>
-        <div class="wiz-section">
+          <div class="wiz-section">
           <div class="wiz-sec-lbl"><span>🕒</span> Working Hours</div>
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
             <div class="auth-field" style="margin:0"><label>Open Time</label><input id="ws-open" type="text" value="09:00" placeholder="09:00" style="width:100%;padding:10px 13px;background:var(--bg3);border:0.5px solid var(--border2);border-radius:9px;font-size:12px;color:var(--txt);outline:none;font-family:inherit"></div>
@@ -1147,9 +1367,12 @@ const App = (() => {
         document.getElementById('ws-pin').value = ws.pincode || '';
         document.getElementById('ws-lat').value = ws.latitude || '';
         document.getElementById('ws-lng').value = ws.longitude || '';
-      }).catch(console.error);
+          App.initMap(ws.latitude, ws.longitude);
+        }).catch(console.error);
+      } else {
+        App.initMap();
+      }
     }
-  }
 
   async function wizSubmitStep1(btn) {
     const name = document.getElementById('ws-name').value.trim();
@@ -1496,7 +1719,7 @@ const App = (() => {
       await API.workspaces.update(wizState.wsId, { useDefaultImages: !hasCustomCatImages });
       
       toast('Workspace fully configured! 🎉');
-      openMod('workspace');
+      if (currentMod === 'workspace') openMod('workspace');
     } catch (err) {
       alert(err.message);
     }
@@ -1663,12 +1886,11 @@ const App = (() => {
                 <input id="edit-ws-pin" type="text" value="${pinVal}" style="width:100%;padding:10px 13px;background:var(--bg3);border:0.5px solid var(--border2);border-radius:9px;font-size:12px;color:var(--txt);outline:none;font-family:inherit;box-sizing:border-box">
               </div>
             </div>
-            <div style="grid-column:1/-1">
-              <div style="font-size:9px;font-weight:700;color:var(--txt3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:5px">Amenities <span style="font-weight:400;text-transform:none;letter-spacing:0">(comma-separated)</span></div>
-              <input id="edit-ws-amenities" type="text" value="${amenitiesStr}" placeholder="Wi-Fi, Coffee, AC, Parking…" style="width:100%;padding:10px 13px;background:var(--bg3);border:0.5px solid var(--border2);border-radius:9px;font-size:12px;color:var(--txt);outline:none;font-family:inherit;box-sizing:border-box">
+                          <div style="grid-column:1/-1">
+                <div style="font-size:9px;font-weight:700;color:var(--txt3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:5px">Amenities <span style="font-weight:400;text-transform:none;letter-spacing:0">(comma-separated)</span></div>
+                </div>
             </div>
           </div>
-        </div>
 
         <div style="height:0.5px;background:var(--border);margin-bottom:22px"></div>
 
@@ -1925,6 +2147,8 @@ const App = (() => {
     const city = document.getElementById('edit-ws-city').value.trim();
     const state = document.getElementById('edit-ws-state').value.trim();
     const pin = document.getElementById('edit-ws-pin').value.trim();
+      const lat = parseFloat(document.getElementById('ws-lat').value);
+      const lng = parseFloat(document.getElementById('ws-lng').value);
     const amenities = document.getElementById('edit-ws-amenities').value.split(',').map(a => a.trim()).filter(Boolean);
     
     const useCustomEl = document.getElementById('edit-ws-toggle-category-images');
@@ -1945,11 +2169,13 @@ const App = (() => {
         city,
         state,
         pincode: pin,
-        amenities,
-        useDefaultImages
+          latitude: lat,
+          longitude: lng,
+          amenities,
+          useDefaultImages
       });
       toast('Workspace details saved successfully! ✓');
-      openMod('workspace');
+      if (currentMod === 'workspace') openMod('workspace');
       document.getElementById('edit-ws-modal-overlay')?.remove();
     } catch (err) {
       errEl.textContent = err.message;
@@ -2122,7 +2348,7 @@ const App = (() => {
       await API.workspaces.deactivate(wsId);
       toast('Workspace deleted successfully 🗑️');
       document.getElementById('edit-ws-modal-overlay')?.remove();
-      openMod('workspace');
+      if (currentMod === 'workspace') openMod('workspace');
     } catch (err) {
       alert(err.message);
     }
@@ -2148,7 +2374,7 @@ const App = (() => {
         await API.workspaces.deactivate(cb.value);
       }
       toast(`${cbs.length} workspace(s) deactivated 🗑️`);
-      openMod('workspace');
+      if (currentMod === 'workspace') openMod('workspace');
     } catch (err) {
       alert(err.message);
       if (btn) { btn.disabled = false; btn.textContent = '🗑 Bulk Deactivate'; }
@@ -2298,13 +2524,13 @@ const App = (() => {
 
   /* ═══ ONBOARDING TOUR ═══ */
   /* ─────────── EXTRA SERVICES ─────────── */
-  async function rExtras(b, btns) {
+  async function rExtras(b, btns, isSilent = false) {
     btns.innerHTML = `<button class="dbtn pr" onclick="App.showAddExtraModal()">+ Extra Service</button>`;
-    b.innerHTML = loadingCard();
+    if (!isSilent) setHtml(b, loadingCard());
     try {
       const wsRes = await API.workspaces.getMy();
       const wsList = wsRes?.data || wsRes || [];
-      if (!wsList.length) { b.innerHTML = emptyCard('Create a workspace first.'); return; }
+      if (!wsList.length) { setHtml(b, emptyCard('Create a workspace first.')); return; }
       const wsId = wsList[0].id;
       const res = await API.workspaces.getExtras(wsId);
       const list = res?.data || res || [];
@@ -2330,7 +2556,7 @@ const App = (() => {
         </div>`).join('') : `<div style="padding:24px;text-align:center;color:var(--txt3);font-size:12px;grid-column:1/-1">No extra services yet. Click "+ Extra Service" to create one.</div>`}
       </div>`;
     } catch (err) {
-      b.innerHTML = errCard(err.message);
+      setHtml(b, errCard(err.message));
     }
   }
 
@@ -2369,7 +2595,7 @@ const App = (() => {
       await API.workspaces.addExtra(wsId, { name, description: desc, price: Number(price) });
       btn.closest('div[style]').remove();
       toast('Extra service added!');
-      openMod('extras');
+      if (currentMod === 'extras') openMod('extras');
     } catch (err) {
       errEl.textContent = err.message;
       btn.disabled = false; btn.textContent = 'Add Service';
@@ -2381,8 +2607,161 @@ const App = (() => {
     try {
       await API.workspaces.deleteExtra(wsId, extraId);
       toast('Extra service deleted');
-      openMod('extras');
+      if (currentMod === 'extras') openMod('extras');
     } catch(e) {
+      toastErr(e.message);
+    }
+  }
+
+  async function rExtrasNew(b, btns, isSilent = false) {
+    btns.innerHTML = `<button class="dbtn pr" onclick="document.getElementById('global-extra-name')?.focus()">+ Global Service</button>`;
+    if (!isSilent) setHtml(b, loadingCard());
+    try {
+      const wsRes = await API.workspaces.getMy();
+      const wsList = wsRes?.data || wsRes || [];
+      if (!selectedExtrasWorkspaceId || !wsList.some(w => w.id === selectedExtrasWorkspaceId)) {
+        selectedExtrasWorkspaceId = wsList[0]?.id || null;
+      }
+
+      const [globalRes, workspaceRes] = await Promise.all([
+        API.workspaces.getGlobalExtras(),
+        selectedExtrasWorkspaceId ? API.workspaces.getWorkspaceExtras(selectedExtrasWorkspaceId) : Promise.resolve({ data: [] }),
+      ]);
+      const globalList = globalRes?.data || globalRes || [];
+      const workspaceList = workspaceRes?.data || workspaceRes || [];
+      const enabledCount = workspaceList.filter(e => e.workspaceEnabled).length;
+
+      b.innerHTML = `
+      <div class="g3">${[
+        ['Global Services', globalList.length, 'Manager catalog', '#8b5cf6'],
+        ['Enabled Here', enabledCount, 'Selected workspace', '#34d399'],
+        ['Workspaces', wsList.length, 'Locations', '#38bdf8'],
+      ].map(([l,v,s,c]) => `<div class="sc"><div class="sc-lb">${l}</div><div class="sc-v" style="color:${c}">${v}</div><div class="sc-s">${s}</div></div>`).join('')}</div>
+
+      <div class="tbl" style="margin-bottom:12px">
+        <div class="tbl-bar">
+          <div>
+            <div class="tbl-ttl">Global Services</div>
+            <div style="font-size:10px;color:var(--txt3);margin-top:2px">Create services once. Enable them per workspace below.</div>
+          </div>
+        </div>
+        <div style="padding:12px;border-bottom:0.5px solid var(--border);display:grid;grid-template-columns:1.1fr 1.4fr .7fr auto;gap:8px;align-items:end">
+          <div class="auth-field" style="margin:0"><label>Name</label><input id="global-extra-name" type="text" placeholder="Lounge Access" style="width:100%;padding:9px 11px;background:var(--bg3);border:0.5px solid var(--border2);border-radius:8px;font-size:12px;color:var(--txt);outline:none;font-family:inherit"></div>
+          <div class="auth-field" style="margin:0"><label>Description</label><input id="global-extra-desc" type="text" placeholder="Optional details" style="width:100%;padding:9px 11px;background:var(--bg3);border:0.5px solid var(--border2);border-radius:8px;font-size:12px;color:var(--txt);outline:none;font-family:inherit"></div>
+          <div class="auth-field" style="margin:0"><label>Price (INR)</label><input id="global-extra-price" type="number" min="1" placeholder="500" style="width:100%;padding:9px 11px;background:var(--bg3);border:0.5px solid var(--border2);border-radius:8px;font-size:12px;color:var(--txt);outline:none;font-family:inherit"></div>
+          <button class="dbtn pr" onclick="App.submitExtra(this)" style="height:37px">Add</button>
+          <div id="global-extra-err" style="grid-column:1/-1;font-size:11px;color:#f87171;min-height:12px"></div>
+        </div>
+        ${globalList.length ? globalList.map(e => `
+          <div class="trow" style="grid-template-columns:1.4fr 2fr .8fr .8fr;min-height:52px">
+            <div>
+              <div class="cn">${e.name}</div>
+              <div style="font-size:9px;color:var(--txt3);margin-top:2px">Used in ${e._count?.workspaces || 0} workspace toggles</div>
+            </div>
+            <div class="ct">${e.description || 'No description'}</div>
+            <div style="font-size:12px;font-weight:800;color:#8b5cf6">INR ${Number(e.price || 0).toFixed(0)}</div>
+            <div style="display:flex;gap:6px;justify-content:flex-end;align-items:center">
+              <span class="badge ${e.isActive?'bs':'be'}">${e.isActive?'Active':'Off'}</span>
+              <button onclick="App.deleteExtra('${e.id}')" style="padding:5px 8px;background:rgba(248,113,113,0.1);color:#f87171;border:0.5px solid rgba(248,113,113,0.3);border-radius:6px;font-size:10px;font-weight:700;cursor:pointer">Delete</button>
+            </div>
+          </div>`).join('') : `<div style="padding:24px;text-align:center;color:var(--txt3);font-size:12px">No global services yet. Add one above.</div>`}
+      </div>
+
+      <div class="tbl">
+        <div class="tbl-bar">
+          <div>
+            <div class="tbl-ttl">Workspace Service Toggles</div>
+            <div style="font-size:10px;color:var(--txt3);margin-top:2px">Pick a workspace and turn global services on or off for that location.</div>
+          </div>
+          <select id="extras-workspace-select" onchange="App.loadExtras(this.value)" style="background:var(--bg3);color:var(--txt);border:0.5px solid var(--border2);border-radius:8px;padding:8px 10px;font-size:12px;font-family:inherit">
+            ${wsList.length ? wsList.map(w => `<option value="${w.id}" ${w.id===selectedExtrasWorkspaceId?'selected':''}>${w.name}</option>`).join('') : '<option>No workspaces</option>'}
+          </select>
+        </div>
+        ${wsList.length ? (workspaceList.length ? workspaceList.map(e => `
+          <div class="trow" style="grid-template-columns:1.4fr 2fr .8fr .8fr;min-height:56px">
+            <div>
+              <div class="cn">${e.name}</div>
+              <div style="font-size:9px;color:var(--txt3);margin-top:2px">${e.isActive ? 'Global service active' : 'Globally disabled'}</div>
+            </div>
+            <div class="ct">${e.description || 'No description'}</div>
+            <div style="font-size:12px;font-weight:800;color:#8b5cf6">INR ${Number(e.price || 0).toFixed(0)}</div>
+            <label style="justify-self:end;display:flex;align-items:center;gap:8px;font-size:11px;color:var(--txt2);font-weight:700">
+              ${e.workspaceEnabled ? 'On' : 'Off'}
+              <input type="checkbox" ${e.workspaceEnabled ? 'checked' : ''} ${e.isActive ? '' : 'disabled'} onchange="App.toggleWorkspaceExtra('${selectedExtrasWorkspaceId}', '${e.id}', this.checked, this)">
+            </label>
+          </div>`).join('') : `<div style="padding:24px;text-align:center;color:var(--txt3);font-size:12px">Add a global service first, then enable it for this workspace.</div>`) : `<div style="padding:24px;text-align:center;color:var(--txt3);font-size:12px">Create a workspace first.</div>`}
+      </div>`;
+    } catch (err) {
+      setHtml(b, errCard(err.message));
+    }
+  }
+
+  async function loadExtras(workspaceId) {
+    selectedExtrasWorkspaceId = workspaceId || selectedExtrasWorkspaceId;
+    const b = document.getElementById('dbody');
+    const btns = document.getElementById('dbtns');
+    if (b && btns) await rExtrasNew(b, btns);
+  }
+
+  async function showAddExtraModalNew() {
+    const ov = document.createElement('div');
+    ov.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:9000;display:flex;align-items:center;justify-content:center';
+    ov.innerHTML = `
+    <div style="background:var(--bg2);border:0.5px solid var(--border);border-radius:16px;padding:28px 32px;width:340px">
+      <div style="font-size:14px;font-weight:800;color:var(--txt);margin-bottom:18px">Add Global Service</div>
+      <div class="auth-field"><label>Service Name</label><input id="modal-extra-name" type="text" placeholder="e.g. Lounge Access" style="width:100%;padding:9px 11px;background:var(--bg3);border:0.5px solid var(--border2);border-radius:8px;font-size:12px;color:var(--txt);outline:none;font-family:inherit"></div>
+      <div class="auth-field"><label>Description</label><input id="modal-extra-desc" type="text" placeholder="Optional details" style="width:100%;padding:9px 11px;background:var(--bg3);border:0.5px solid var(--border2);border-radius:8px;font-size:12px;color:var(--txt);outline:none;font-family:inherit"></div>
+      <div class="auth-field"><label>Price (INR)</label><input id="modal-extra-price" type="number" placeholder="e.g. 500" style="width:100%;padding:9px 11px;background:var(--bg3);border:0.5px solid var(--border2);border-radius:8px;font-size:12px;color:var(--txt);outline:none;font-family:inherit"></div>
+      <div id="modal-extra-err" style="font-size:11px;color:#f87171;margin-bottom:8px;min-height:14px"></div>
+      <div style="display:flex;gap:8px">
+        <button onclick="App.submitExtra(this, 'modal')" style="flex:1;padding:9px;background:var(--accent);color:#fff;border:none;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit">Add Service</button>
+        <button onclick="this.closest('div[style]').remove()" style="padding:9px 14px;background:var(--bg3);color:var(--txt2);border:0.5px solid var(--border2);border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit">Cancel</button>
+      </div>
+    </div>`;
+    document.body.appendChild(ov);
+    ov.addEventListener('click', e => { if (e.target === ov) ov.remove(); });
+  }
+
+  async function submitExtraNew(btn, source = 'global') {
+    const prefix = source === 'modal' ? 'modal-extra' : 'global-extra';
+    const name = document.getElementById(`${prefix}-name`)?.value.trim();
+    const desc = document.getElementById(`${prefix}-desc`)?.value.trim();
+    const price = document.getElementById(`${prefix}-price`)?.value;
+    const errEl = document.getElementById(`${prefix}-err`);
+    if (!name) { errEl.textContent = 'Service name required.'; return; }
+    if (!price || Number(price) <= 0) { errEl.textContent = 'Valid price required.'; return; }
+    btn.disabled = true; btn.textContent = 'Adding...';
+    try {
+      await API.workspaces.addExtra({ name, description: desc, price: Number(price) });
+      if (source === 'modal') btn.closest('div[style]').remove();
+      toast('Global service added');
+      if (currentMod === 'extras') openMod('extras');
+    } catch (err) {
+      errEl.textContent = err.message;
+      btn.disabled = false; btn.textContent = source === 'modal' ? 'Add Service' : 'Add';
+    }
+  }
+
+  async function deleteExtraNew(extraId) {
+    if (!confirm('Delete this global service? It will be removed from every workspace.')) return;
+    try {
+      await API.workspaces.deleteExtra(extraId);
+      toast('Global service deleted');
+      if (currentMod === 'extras') openMod('extras');
+    } catch(e) {
+      toastErr(e.message);
+    }
+  }
+
+  async function toggleWorkspaceExtra(wsId, extraId, isEnabled, input) {
+    input.disabled = true;
+    try {
+      await API.workspaces.toggleWorkspaceExtra(wsId, extraId, isEnabled);
+      toast(isEnabled ? 'Service enabled for workspace' : 'Service disabled for workspace');
+      await loadExtras(wsId);
+    } catch(e) {
+      input.checked = !isEnabled;
+      input.disabled = false;
       toastErr(e.message);
     }
   }
@@ -2450,7 +2829,11 @@ const App = (() => {
 
   function tourNext() { tourStep++; renderTourStep(); }
   function tourPrev() { tourStep--; renderTourStep(); }
-  function endTour()  { clearTour(); toast('Tour complete! Use ⌨ in the nav for shortcuts anytime 🚀'); }
+  function endTour()  { 
+    clearTour(); 
+    if (currentUser?.id) localStorage.setItem('tour_seen_' + currentUser.id, 'true');
+    toast('Tour complete! Use the ? icon in the nav to restart it anytime 🚀'); 
+  }
 
   function clearTour() {
     ['tour-backdrop','tour-highlight','tour-card'].forEach(id => {
@@ -2470,21 +2853,141 @@ const App = (() => {
     }
   }
 
-  /* ═══ PUBLIC API ═══ */
+  let mapInstance = null;
+  let mapMarker = null;
+
+  function initMap(lat, lng) {
+    const mapEl = document.getElementById('ws-map');
+    if (!mapEl) return;
+    
+    if (mapInstance) {
+      mapInstance.remove();
+      mapInstance = null;
+    }
+
+    const defaultLat = lat || 18.5204;
+    const defaultLng = lng || 73.8567;
+    
+    document.getElementById('ws-lat').value = defaultLat;
+    document.getElementById('ws-lng').value = defaultLng;
+
+    setTimeout(() => {
+      mapInstance = L.map('ws-map').setView([defaultLat, defaultLng], 13);
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '&copy; OpenStreetMap contributors'
+      }).addTo(mapInstance);
+
+      mapMarker = L.marker([defaultLat, defaultLng], { draggable: true }).addTo(mapInstance);
+      
+      mapMarker.on('dragend', function(e) {
+        const position = mapMarker.getLatLng();
+        document.getElementById('ws-lat').value = position.lat;
+        document.getElementById('ws-lng').value = position.lng;
+      });
+
+      mapInstance.on('click', function(e) {
+        mapMarker.setLatLng(e.latlng);
+        document.getElementById('ws-lat').value = e.latlng.lat;
+        document.getElementById('ws-lng').value = e.latlng.lng;
+      });
+    }, 200);
+  }
+
+  function detectLocation() {
+    if (!navigator.geolocation) {
+      toastErr('Geolocation is not supported by your browser');
+      return;
+    }
+    const btn = event.currentTarget;
+    const oldHtml = btn.innerHTML;
+    btn.innerHTML = '<i class="ti ti-loader-2" style="animation:spin 1s linear infinite"></i> Locating...';
+    btn.disabled = true;
+
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        const lat = position.coords.latitude;
+        const lng = position.coords.longitude;
+        if (mapInstance && mapMarker) {
+          mapInstance.flyTo([lat, lng], 15);
+          mapMarker.setLatLng([lat, lng]);
+          document.getElementById('ws-lat').value = lat;
+          document.getElementById('ws-lng').value = lng;
+        }
+        btn.innerHTML = oldHtml;
+        btn.disabled = false;
+        toast('Location detected! ??');
+      },
+      (error) => {
+        btn.innerHTML = oldHtml;
+        btn.disabled = false;
+        toastErr('Unable to retrieve your location');
+      }
+    );
+  }
+
+  async function searchMapLocation() {
+    const input = document.getElementById('ws-map-search');
+    const query = input.value.trim();
+    if (!query) return;
+    
+    const btn = event.currentTarget;
+    const oldHtml = btn.innerHTML;
+    btn.innerHTML = '<i class="ti ti-loader-2" style="animation:spin 1s linear infinite"></i>';
+    btn.disabled = true;
+
+    try {
+      const res = await fetch('https://nominatim.openstreetmap.org/search?format=json&q=' + encodeURIComponent(query));
+      const data = await res.json();
+      if (data && data.length > 0) {
+        const lat = parseFloat(data[0].lat);
+        const lng = parseFloat(data[0].lon);
+        if (mapInstance && mapMarker) {
+          mapInstance.flyTo([lat, lng], 14);
+          mapMarker.setLatLng([lat, lng]);
+          document.getElementById('ws-lat').value = lat;
+          document.getElementById('ws-lng').value = lng;
+        }
+      } else {
+        toastErr('Location not found');
+      }
+    } catch (err) {
+      toastErr('Search failed: ' + err.message);
+    } finally {
+      btn.innerHTML = oldHtml;
+      btn.disabled = false;
+    }
+  }
+
+  /* --- PUBLIC API --- */
   return {
+    initMap, detectLocation, searchMapLocation,
     init, doLogin, doSignup, logout, forceLogout, switchTab, toggleTheme,
     goHome, openMod, toggleDD, loadBookings,
     confirmBooking, rejectBooking, escalateIssue,
     genStaffCode, openCreateWorkspacePage, renderWizStep, wizSubmitStep1, wizUploadImage, wizDeleteImage, wizToggleCategory, wizAddDesk, wizAddBulkDesk, wizDeleteDesk, wizFinish, showGenQrModal, submitGenQr, printQr,
     showWarnModal, showAddCouponModal, submitCoupon, deleteCoupon,
     markAllRead, payPlatformFee, saveSettings, showChangePwdModal, submitChangePwd,
-    toggleSw, openShortcutsModal, toggleShortcuts, tourNext, tourPrev, endTour, toast, toastErr,
+    toggleSw, openShortcutsModal, toggleShortcuts, startTour, tourNext, tourPrev, endTour, toast, toastErr,
     ddGo,
     openManageWorkspacePage, renderEditWorkspaceModalContent, toggleWsCategoryImages,
     submitEditWorkspace, addWorkspaceDesk, addBulkWorkspaceDesks, deleteWorkspaceDesk,
     uploadWorkspaceImage, deleteWorkspaceImage, deleteWorkspacePrompt, togglePricingPlan, updatePricingPlanPrice,
     toggleAllWs, bulkDeactivateWs,
-    showGenQrModal, submitGenQr, printQr,
-    rExtras, loadExtras, showAddExtraModal, submitExtra, deleteExtra,
+    rExtras: rExtrasNew, loadExtras, showAddExtraModal: showAddExtraModalNew,
+    submitExtra: submitExtraNew, deleteExtra: deleteExtraNew, toggleWorkspaceExtra,
   };
 })();
+
+
+
+
+
+
+
+
+
+
+
+
+
+

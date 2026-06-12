@@ -10,12 +10,15 @@ try { Razorpay = require('razorpay'); } catch (_) {}
 export class PaymentsService {
   private razorpay: any;
   constructor(private prisma: PrismaService, private config: ConfigService) {
-    if (Razorpay) {
-      this.razorpay = new Razorpay({
-        key_id: this.config.get('RAZORPAY_KEY_ID'),
-        key_secret: this.config.get('RAZORPAY_KEY_SECRET'),
-      });
+    const keyId = this.config.get('RAZORPAY_KEY_ID');
+    const keySecret = this.config.get('RAZORPAY_KEY_SECRET');
+    if (Razorpay && keyId && keySecret && !keyId.includes('xxxx')) {
+      this.razorpay = new Razorpay({ key_id: keyId, key_secret: keySecret });
     }
+  }
+
+  private get isDummy(): boolean {
+    return !this.razorpay;
   }
 
   async createOrder(bookingId: string) {
@@ -23,12 +26,30 @@ export class PaymentsService {
     if (!booking) throw new NotFoundException('Booking not found');
     if (booking.payment) throw new BadRequestException('Payment already initiated');
     const amountPaise = Math.round(Number(booking.finalAmount) * 100);
+
+    if (this.isDummy) {
+      // Dummy mode: auto-create a fake order and immediately confirm the booking
+      const dummyOrderId = `dummy_order_${bookingId}`;
+      const dummyPaymentId = `dummy_payment_${Date.now()}`;
+      await this.prisma.payment.create({ data: { bookingId, razorpayOrderId: dummyOrderId, razorpayPaymentId: dummyPaymentId, amount: booking.finalAmount, status: 'SUCCESS' } });
+      await this.prisma.booking.update({ where: { id: bookingId }, data: { status: 'CONFIRMED' } });
+      await this.generateInvoice(bookingId);
+      return { orderId: dummyOrderId, amount: amountPaise, currency: 'INR', key: 'DUMMY', isDummy: true };
+    }
+
     const order = await this.razorpay.orders.create({ amount: amountPaise, currency: 'INR', receipt: `booking_${bookingId}`, notes: { bookingId } });
     await this.prisma.payment.create({ data: { bookingId, razorpayOrderId: order.id, amount: booking.finalAmount, status: 'PENDING' } });
     return { orderId: order.id, amount: amountPaise, currency: 'INR', key: this.config.get('RAZORPAY_KEY_ID') };
   }
 
   async verifyPayment(dto: { razorpay_order_id: string; razorpay_payment_id: string; razorpay_signature: string }) {
+    // Dummy mode: auto-confirm if order/payment IDs start with dummy_
+    if (dto.razorpay_order_id?.startsWith('dummy_')) {
+      const payment = await this.prisma.payment.findFirst({ where: { razorpayOrderId: dto.razorpay_order_id } });
+      if (!payment) throw new NotFoundException('Payment not found');
+      return { success: true, payment };
+    }
+
     const body = `${dto.razorpay_order_id}|${dto.razorpay_payment_id}`;
     const expectedSig = crypto.createHmac('sha256', this.config.get('RAZORPAY_KEY_SECRET')).update(body).digest('hex');
     if (expectedSig !== dto.razorpay_signature) throw new BadRequestException('Payment verification failed');
@@ -62,6 +83,13 @@ export class PaymentsService {
     if (existing) throw new BadRequestException('Platform fee already paid for this month');
     const workspaceCount = await this.prisma.workspace.count({ where: { managerId } });
     const totalFee = workspaceCount * Number(this.config.get('PLATFORM_FEE_PER_WORKSPACE', 999));
+
+    if (this.isDummy) {
+      const dummyOrderId = `dummy_platform_${managerId}_${month}`;
+      await this.prisma.platformFeePayment.create({ data: { managerId, month, amount: totalFee, razorpayOrderId: dummyOrderId, status: 'SUCCESS' } });
+      return { orderId: dummyOrderId, amount: totalFee * 100, currency: 'INR', key: 'DUMMY', isDummy: true };
+    }
+
     const order = await this.razorpay.orders.create({ amount: totalFee * 100, currency: 'INR', receipt: `platform_fee_${managerId}_${month}` });
     await this.prisma.platformFeePayment.create({ data: { managerId, month, amount: totalFee, razorpayOrderId: order.id, status: 'PENDING' } });
     return { orderId: order.id, amount: totalFee * 100, currency: 'INR', key: this.config.get('RAZORPAY_KEY_ID') };
